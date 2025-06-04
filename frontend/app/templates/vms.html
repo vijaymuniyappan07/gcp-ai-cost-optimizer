@@ -220,6 +220,36 @@
                             {% endif %}
                         {% endif %}
                     </th>
+                    <th class="sortable" onclick="setSort('labels', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Labels
+                        {% if sort_by == 'labels' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('diskTypes', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Disk Type
+                        {% if sort_by == 'diskTypes' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('diskSizes', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Disk Size (GB)
+                        {% if sort_by == 'diskSizes' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
                     <th class="sortable" onclick="setSort('creationTime', '{{ sort_by }}', '{{ sort_dir }}')">
                         Creation Time
                         {% if sort_by == 'creationTime' %}
@@ -300,20 +330,10 @@
                             {% endif %}
                         {% endif %}
                     </th>
-                    <th class="sortable" onclick="setSort('labels', '{{ sort_by }}', '{{ sort_dir }}')">
-                        Labels
-                        {% if sort_by == 'labels' %}
-                            {% if sort_dir == 'asc' %}
-                                &#9650;
-                            {% else %}
-                                &#9660;
-                            {% endif %}
-                        {% endif %}
-                    </th>
                 </tr>
                 {% if vms|length == 0 %}
                     <tr>
-                        <td colspan="13" style="text-align:center; color:#888;">No VMs found for the selected location.</td>
+                        <td colspan="15" style="text-align:center; color:#888;">No VMs found for the selected location.</td>
                     </tr>
                 {% else %}
                     {% for vm in vms %}
@@ -322,6 +342,9 @@
                             <td>{{ vm.status }}</td>
                             <td>{{ vm.zone }}</td>
                             <td>{{ vm.machineType }}</td>
+                            <td>{{ vm.labels }}</td>
+                            <td>{{ vm.diskTypes }}</td>
+                            <td>{{ vm.diskSizes }}</td>
                             <td>{{ vm.creationTime }}</td>
                             <td>{{ vm.lastStartedTime }}</td>
                             <td>{{ vm.lastStoppedTime }}</td>
@@ -330,7 +353,6 @@
                             <td>{{ vm.internalIp }}</td>
                             <td>{{ vm.externalIp }}</td>
                             <td>{{ vm.vpcName }}</td>
-                            <td>{{ vm.labels }}</td>
                         </tr>
                     {% endfor %}
                 {% endif %}

@@ -49,6 +49,38 @@ def index():
         return redirect(url_for("login"))
     return render_template("home.html", role=session["role"])
 
+@app.route("/gke", methods=["GET", "POST"])
+def gke():
+    loading = True
+    error = None
+    clusters = None
+    project_ids = []
+    selected_project_id = ""
+    try:
+        # Fetch project ids for the dropdown
+        resp = requests.get(f"{BACKEND_API_URL}/gcp/options", timeout=10)
+        resp.raise_for_status()
+        options = resp.json()
+        project_ids = options.get("project_ids", [])
+        selected_project_id = project_ids[0] if project_ids else ""
+    except Exception as e:
+        error = f"Error fetching project ids: {e}"
+        loading = False
+        return render_template("gke.html", clusters=None, error=error, loading=loading, project_ids=[], selected_project_id=None)
+
+    if request.method == "POST":
+        selected_project_id = request.form.get("project_id", "") or selected_project_id
+    try:
+        resp = requests.get(f"{BACKEND_API_URL}/resources/gke", params={"project_id": selected_project_id}, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        clusters = data.get("gke", [])
+        loading = False
+    except Exception as e:
+        error = f"Error fetching GKE clusters: {e}"
+        loading = False
+    return render_template("gke.html", clusters=clusters, error=error, loading=loading, project_ids=project_ids, selected_project_id=selected_project_id)
+
 @app.route("/cloudsql", methods=["GET", "POST"])
 def cloudsql():
     loading = True
@@ -161,6 +193,12 @@ def vms():
                 numeric_fields = {"daysStarted", "daysStopped"}
                 def sort_key(vm):
                     val = vm.get(sort_by, "")
+                    if sort_by == "diskSizes":
+                        try:
+                            first_size = int(str(val).split(",")[0].strip())
+                            return first_size
+                        except Exception:
+                            return float('inf') if reverse else float('-inf')
                     if sort_by in numeric_fields:
                         try:
                             return int(val)

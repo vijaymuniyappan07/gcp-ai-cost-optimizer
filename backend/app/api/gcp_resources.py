@@ -78,17 +78,19 @@ def get_cloudsql(project_id: str = Query(None, description="GCP project id")):
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
+from app.services.gke_service import GKEService
+
 @router.get("/resources/gke")
-def get_gke():
+def get_gke(project_id: str = Query(None, description="GCP project id")):
     """
-    Returns mock GKE cluster data for testing.
+    Returns real GKE cluster data for the given project.
     """
-    return {
-        "gke": [
-            {"id": "gke-1", "name": "test-gke-1", "status": "RUNNING"},
-            {"id": "gke-2", "name": "test-gke-2", "status": "STOPPED"}
-        ]
-    }
+    try:
+        gke_service = GKEService(project_id=project_id)
+        clusters = gke_service.list_gke_clusters(project_id=project_id)
+        return JSONResponse(content={"gke": clusters})
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
 @router.get("/resources/filestore")
 def get_filestore():

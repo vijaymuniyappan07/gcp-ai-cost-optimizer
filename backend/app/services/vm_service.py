@@ -153,6 +153,16 @@ class VMService:
         labels = getattr(instance, "labels", {})
         labels_str = ", ".join(f"{k}:{v}" for k, v in labels.items()) if labels else ""
 
+        # Extract disk types and sizes
+        disks = getattr(instance, "disks", [])
+        disk_types = []
+        disk_sizes = []
+        for disk in disks:
+            disk_type = getattr(disk, "type_", "") or getattr(disk, "type", "")
+            disk_size = getattr(disk, "disk_size_gb", "") or getattr(disk, "diskSizeGb", "")
+            disk_types.append(disk_type.split("/")[-1] if "/" in disk_type else disk_type)
+            disk_sizes.append(str(disk_size))
+
         return {
             "id": getattr(instance, "id", ""),
             "name": getattr(instance, "name", ""),
@@ -169,4 +179,6 @@ class VMService:
             "externalIp": external_ip,
             "vpcName": vpc_name,
             "labels": labels_str,
+            "diskTypes": ", ".join(disk_types),
+            "diskSizes": ", ".join(disk_sizes),
         }
