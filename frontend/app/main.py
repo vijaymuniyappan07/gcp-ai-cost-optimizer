@@ -126,6 +126,7 @@ VM_FORM_HTML = """
                     sortByInput.value = field;
                     sortDirInput.value = "asc";
                 }
+                showLoading();
                 form.submit();
             }
         }
@@ -151,9 +152,23 @@ VM_FORM_HTML = """
         <input type="hidden" name="sort_dir" id="sort_dir" value="{{ sort_dir }}">
         <button type="submit">Fetch VMs</button>
     </form>
-    <div id="loading-msg" class="loading" style="display:none;">Loading VMs, please wait...</div>
+    <div id="loading-msg" class="loading" style="display:none;">
+        <svg width="40" height="40" viewBox="0 0 40 40" style="vertical-align:middle;">
+            <circle cx="20" cy="20" r="16" stroke="#2980b9" stroke-width="4" fill="none" stroke-dasharray="80" stroke-linecap="round">
+                <animateTransform attributeName="transform" type="rotate" from="0 20 20" to="360 20 20" dur="1s" repeatCount="indefinite"/>
+            </circle>
+        </svg>
+        Loading VMs, please wait...
+    </div>
     {% if loading %}
-        <div class="loading">Loading VMs, please wait...</div>
+        <div class="loading">
+            <svg width="40" height="40" viewBox="0 0 40 40" style="vertical-align:middle;">
+                <circle cx="20" cy="20" r="16" stroke="#2980b9" stroke-width="4" fill="none" stroke-dasharray="80" stroke-linecap="round">
+                    <animateTransform attributeName="transform" type="rotate" from="0 20 20" to="360 20 20" dur="1s" repeatCount="indefinite"/>
+                </circle>
+            </svg>
+            Loading VMs, please wait...
+        </div>
     {% endif %}
     {% if error %}
         <div class="error">{{ error }}</div>
