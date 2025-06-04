@@ -27,8 +27,19 @@ class GKEService:
                 for cluster in resp.get("clusters", []):
                     # Node pools info
                     node_pools = cluster.get("nodePools", [])
-                    node_pool_names = [np.get("name", "") for np in node_pools]
-                    node_pool_machine_types = [np.get("config", {}).get("machineType", "") for np in node_pools]
+                    node_pool_objs = []
+                    for np in node_pools:
+                        name = np.get("name", "")
+                        machine_type = np.get("config", {}).get("machineType", "")
+                        autoscaling = np.get("autoscaling", {})
+                        autoscaling_enabled = autoscaling.get("enabled", False)
+                        node_pool_objs.append({
+                            "name": name,
+                            "machineType": machine_type,
+                            "autoscalingEnabled": autoscaling_enabled,
+                        })
+                    node_pool_names = [np["name"] for np in node_pool_objs]
+                    node_pool_machine_types = [np["machineType"] for np in node_pool_objs]
                     autoscaling_status = []
                     min_node_count = []
                     max_node_count = []
@@ -43,13 +54,11 @@ class GKEService:
                             autoscaling_status.append("DISABLED")
                             min_node_count.append("0")
                             max_node_count.append("0")
-                    # Cluster type: Autopilot or Standard
                     clustertype = "Autopilot" if cluster.get("autopilot", {}).get("enabled") else "Standard"
                     node_count = int(cluster.get("currentNodeCount", 0) or 0)
                     status = cluster.get("status", "")
                     if node_count == 0:
                         status = "STOPPED"
-                    # Is public cluster?
                     private_config = cluster.get("privateClusterConfig", {})
                     is_public = not private_config.get("enablePrivateNodes", False)
                     clusters.append({
@@ -65,7 +74,7 @@ class GKEService:
                         "labels": ", ".join(f"{k}:{v}" for k, v in cluster.get("resourceLabels", {}).items()) if cluster.get("resourceLabels") else "",
                         "createTime": cluster.get("createTime", ""),
                         "clustertype": clustertype,
-                        "nodePools": ", ".join(node_pool_names),
+                        "nodePools": node_pool_objs,
                         "nodePoolsMachineType": ", ".join(node_pool_machine_types),
                         "autoscalingStatus": ", ".join(autoscaling_status),
                         "minNodeCount": ", ".join(min_node_count),

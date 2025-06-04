@@ -46,6 +46,10 @@
         .modern-table tr.non-running:hover {
             background: #2d323c;
         }
+        .nodepool-autoscale {
+            color: #27ae60;
+            font-weight: bold;
+        }
     </style>
     <script>
         function showLoading() {
@@ -119,7 +123,14 @@
                         <td>{{ cluster.location }}</td>
                         <td>{{ cluster.status }}</td>
                         <td>{{ cluster.clustertype }}</td>
-                        <td>{{ cluster.nodePools }}</td>
+                        <td>
+                            {% for np in cluster.nodePools %}
+                                <span{% if np.autoscalingEnabled %} class="nodepool-autoscale"{% endif %}>
+                                    {{ np.name }}
+                                    {% if np.autoscalingEnabled %}(Autoscale){% endif %}
+                                </span>{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        </td>
                         <td>{{ cluster.nodePoolsMachineType }}</td>
                         <td>{{ cluster.isPublicCluster }}</td>
                         <td>{{ cluster.autoscalingStatus }}</td>
