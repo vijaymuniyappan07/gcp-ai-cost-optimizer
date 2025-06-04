@@ -93,10 +93,12 @@
                 <th>Location</th>
                 <th>Status</th>
                 <th>Cluster Type</th>
+                <th>Node Pools</th>
+                <th>Node Pools Machine Type</th>
+                <th>Is Public Cluster?</th>
                 <th>Autoscaling Status</th>
                 <th>Min Node Count</th>
                 <th>Max Node Count</th>
-                <th>Node Pools</th>
                 <th>Endpoint</th>
                 <th>Node Count</th>
                 <th>Node Version</th>
@@ -108,19 +110,21 @@
             </tr>
             {% if clusters|length == 0 %}
                 <tr>
-                    <td colspan="16" style="text-align:center; color:#888;">No GKE clusters found.</td>
+                    <td colspan="18" style="text-align:center; color:#888;">No GKE clusters found.</td>
                 </tr>
             {% else %}
                 {% for cluster in clusters %}
-                    <tr class="{% if cluster.status and (cluster.status|lower == 'stopped' or cluster.status|lower == 'suspended') %}non-running{% endif %}">
+                    <tr class="{% if (cluster.status and (cluster.status|lower == 'stopped' or cluster.status|lower == 'suspended')) or (cluster.nodeCount|string == '0') %}non-running{% endif %}">
                         <td>{{ cluster.name }}</td>
                         <td>{{ cluster.location }}</td>
                         <td>{{ cluster.status }}</td>
                         <td>{{ cluster.clustertype }}</td>
-                        <td>{{ cluster.autoscalingStatus }}</td>
-                        <td>{{ cluster.minNodeCount }}</td>
-                        <td>{{ cluster.maxNodeCount }}</td>
                         <td>{{ cluster.nodePools }}</td>
+                        <td>{{ cluster.nodePoolsMachineType }}</td>
+                        <td>{{ cluster.isPublicCluster }}</td>
+                        <td>{{ cluster.autoscalingStatus }}</td>
+                        <td>{{ cluster.minNodeCount or '0' }}</td>
+                        <td>{{ cluster.maxNodeCount or '0' }}</td>
                         <td>{{ cluster.endpoint }}</td>
                         <td>{{ cluster.nodeCount }}</td>
                         <td>{{ cluster.nodeVersion }}</td>

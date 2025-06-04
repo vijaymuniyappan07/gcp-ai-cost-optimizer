@@ -28,6 +28,7 @@ class GKEService:
                     # Node pools info
                     node_pools = cluster.get("nodePools", [])
                     node_pool_names = [np.get("name", "") for np in node_pools]
+                    node_pool_machine_types = [np.get("config", {}).get("machineType", "") for np in node_pools]
                     autoscaling_status = []
                     min_node_count = []
                     max_node_count = []
@@ -36,29 +37,40 @@ class GKEService:
                         if autoscaling:
                             enabled = autoscaling.get("enabled", False)
                             autoscaling_status.append("ENABLED" if enabled else "DISABLED")
-                            min_node_count.append(str(autoscaling.get("minNodeCount", "")))
-                            max_node_count.append(str(autoscaling.get("maxNodeCount", "")))
+                            min_node_count.append(str(autoscaling.get("minNodeCount", 0) or 0))
+                            max_node_count.append(str(autoscaling.get("maxNodeCount", 0) or 0))
                         else:
                             autoscaling_status.append("DISABLED")
-                            min_node_count.append("")
-                            max_node_count.append("")
+                            min_node_count.append("0")
+                            max_node_count.append("0")
+                    # Cluster type: Autopilot or Standard
+                    clustertype = "Autopilot" if cluster.get("autopilot", {}).get("enabled") else "Standard"
+                    node_count = int(cluster.get("currentNodeCount", 0) or 0)
+                    status = cluster.get("status", "")
+                    if node_count == 0:
+                        status = "STOPPED"
+                    # Is public cluster?
+                    private_config = cluster.get("privateClusterConfig", {})
+                    is_public = not private_config.get("enablePrivateNodes", False)
                     clusters.append({
                         "name": cluster.get("name", ""),
                         "location": cluster.get("location", ""),
-                        "status": cluster.get("status", ""),
+                        "status": status,
                         "endpoint": cluster.get("endpoint", ""),
-                        "nodeCount": cluster.get("currentNodeCount", ""),
+                        "nodeCount": node_count,
                         "nodeVersion": cluster.get("currentNodeVersion", ""),
                         "masterVersion": cluster.get("currentMasterVersion", ""),
                         "network": cluster.get("network", ""),
                         "subnetwork": cluster.get("subnetwork", ""),
                         "labels": ", ".join(f"{k}:{v}" for k, v in cluster.get("resourceLabels", {}).items()) if cluster.get("resourceLabels") else "",
                         "createTime": cluster.get("createTime", ""),
-                        "clustertype": cluster.get("clusterIpv4Cidr", ""),  # Not a true type, but a unique field
+                        "clustertype": clustertype,
+                        "nodePools": ", ".join(node_pool_names),
+                        "nodePoolsMachineType": ", ".join(node_pool_machine_types),
                         "autoscalingStatus": ", ".join(autoscaling_status),
                         "minNodeCount": ", ".join(min_node_count),
                         "maxNodeCount": ", ".join(max_node_count),
-                        "nodePools": ", ".join(node_pool_names),
+                        "isPublicCluster": "Yes" if is_public else "No",
                     })
             except Exception as e:
                 print(f"[GKE] Error fetching clusters: {e}")
