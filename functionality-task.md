@@ -1,0 +1,134 @@
+# Functionality Task List: GCP AI Cost Optimizer (Next Phase)
+
+This list prioritizes visual feedback and parallel backend/frontend progress.
+
+---
+
+## 1. Home Page (Frontend)
+
+- **[COMPLETED] Create a Home Page**
+  - Implement a homepage in the frontend (Flask) that visually references all major resources: VMs, Cloud SQL, GKE, Filestore, Cloud Storage.
+  - The page should have clear navigation or links/cards for each resource type.
+  - Test: Home page renders and all resource references are visible.
+  - **Includes login mechanism:** Users must log in as admin or reader (credentials from .env) before accessing the homepage.
+
+---
+
+## 2. GCP Credential Validation (Backend)
+
+- **[COMPLETED] Implement and Test GCP Credential Logic**
+  - Update `backend/app/utils/auth.py` to validate real GCP credentials (load from `.env`, check file exists, attempt a simple GCP API call for validation).
+  - Add a backend endpoint (e.g., `/auth/check`) to test credential validity.
+  - Test: Endpoint returns success/failure for valid/invalid credentials.
+  - (Optional) Add a frontend UI to display credential status.
+
+---
+
+## 3. VMs: Backend + Frontend
+
+- **Backend:**
+  - Implement real GCP VM data fetching in `gcp_client.py` and wire to `/resources/vms`.
+  - Test: Endpoint returns real (or mocked) VM data.
+
+- **Frontend:**
+  - Update `ResourceSummary` (or a dedicated VMs page) to fetch and display VM data from backend.
+  - Add loading/error states for VM data.
+  - Test: UI shows live VM data.
+
+---
+
+## 4. Cloud SQL: Backend + Frontend
+
+- **Backend:**
+  - Implement Cloud SQL data fetching in `gcp_client.py` and wire to `/resources/cloudsql`.
+  - Test: Endpoint returns real (or mocked) Cloud SQL data.
+
+- **Frontend:**
+  - Update `ResourceSummary` to display Cloud SQL data.
+  - Add loading/error states for Cloud SQL.
+  - Test: UI shows live Cloud SQL data.
+
+---
+
+## 5. GKE: Backend + Frontend
+
+- **Backend:**
+  - Implement GKE cluster data fetching in `gcp_client.py` and wire to `/resources/gke`.
+  - Test: Endpoint returns real (or mocked) GKE data.
+
+- **Frontend:**
+  - Update `ResourceSummary` to display GKE data.
+  - Add loading/error states for GKE.
+  - Test: UI shows live GKE data.
+
+---
+
+## 6. Filestore: Backend + Frontend
+
+- **Backend:**
+  - Implement Filestore data fetching in `gcp_client.py` and wire to `/resources/filestore`.
+  - Test: Endpoint returns real (or mocked) Filestore data.
+
+- **Frontend:**
+  - Update `ResourceSummary` to display Filestore data.
+  - Add loading/error states for Filestore.
+  - Test: UI shows live Filestore data.
+
+---
+
+## 7. Cloud Storage: Backend + Frontend
+
+- **Backend:**
+  - Implement Cloud Storage bucket data fetching in `gcp_client.py` and wire to `/resources/storage`.
+  - Test: Endpoint returns real (or mocked) Storage data.
+
+- **Frontend:**
+  - Update `ResourceSummary` to display Storage data.
+  - Add loading/error states for Storage.
+  - Test: UI shows live Storage data.
+
+---
+
+## 8. Cost Analysis: Backend + Frontend
+
+- **Backend:**
+  - Implement real cost analysis logic in `cost_analysis.py` and expose via `/cost-analysis`.
+  - Test: Endpoint returns analysis for test data.
+
+- **Frontend:**
+  - Update dashboard to fetch and display cost analysis results.
+  - Add loading/error states for cost analysis.
+  - Test: UI shows live cost analysis.
+
+---
+
+## 9. AI/ML Recommendations: Backend + Frontend
+
+- **Backend:**
+  - Integrate with AI/ML service in `ai_service.py` and wire to `/recommendations`.
+  - Test: Endpoint returns actionable recommendations.
+
+- **Frontend:**
+  - Update `RecommendationList` to fetch and display recommendations.
+  - Add loading/error states for recommendations.
+  - Test: UI shows live recommendations.
+
+---
+
+## 10. User Actions & Polish
+
+- **Frontend:**
+  - Implement basic navigation and layout (dashboard, resource details, recommendations).
+  - Add minimal CSS for usability.
+  - Test: Visual check and navigation.
+
+---
+
+## 11. Documentation & DevOps
+
+- **Update README and .env.example** as you add new features.
+- **(Optional) Set up CI for tests and linting.**
+
+---
+
+If you want a more granular breakdown for any specific step, let me know!
