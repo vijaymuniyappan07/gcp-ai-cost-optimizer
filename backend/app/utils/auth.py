@@ -1,9 +1,10 @@
 import os
 from dotenv import load_dotenv
-from google.auth import default, load_credentials_from_file
-from typing import Any
+from google.auth.exceptions import DefaultCredentialsError
+from google.auth import load_credentials_from_file
+from googleapiclient.discovery import build
 
-def load_gcp_credentials() -> Any:
+def load_gcp_credentials():
     """
     Loads GCP credentials from the path specified in the .env file.
     Returns a credentials object usable by Google Cloud SDKs.
@@ -16,3 +17,22 @@ def load_gcp_credentials() -> Any:
         )
     credentials, project = load_credentials_from_file(cred_path)
     return credentials
+
+def validate_gcp_credentials():
+    """
+    Attempts to use the loaded credentials to make a simple GCP API call.
+    Returns (success: bool, message: str)
+    """
+    try:
+        creds = load_gcp_credentials()
+        # Try listing GCP projects as a simple check
+        service = build("cloudresourcemanager", "v1", credentials=creds)
+        request = service.projects().list(pageSize=1)
+        response = request.execute()
+        return True, "GCP credentials are valid."
+    except FileNotFoundError as e:
+        return False, f"Credentials file error: {e}"
+    except DefaultCredentialsError as e:
+        return False, f"Credentials error: {e}"
+    except Exception as e:
+        return False, f"GCP API call failed: {e}"

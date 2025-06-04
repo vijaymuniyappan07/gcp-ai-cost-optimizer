@@ -11,6 +11,9 @@ if current_dir not in sys.path:
 from api import gcp_resources
 from api import recommendations
 
+# Import GCP credential validation
+from utils import auth
+
 app = FastAPI()
 
 app.include_router(gcp_resources.router)
@@ -23,3 +26,12 @@ def health_check():
     Returns 200 OK with a status message.
     """
     return JSONResponse(content={"status": "ok"})
+
+@app.get("/auth/check")
+def check_gcp_credentials():
+    """
+    Endpoint to validate GCP credentials.
+    Returns JSON with success and message.
+    """
+    success, message = auth.validate_gcp_credentials()
+    return JSONResponse(content={"success": success, "message": message})
