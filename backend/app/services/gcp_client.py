@@ -129,22 +129,60 @@ class GCPClient:
             return []
 
     def _instance_to_dict(self, instance):
-        # Only creation time is available from the API
+        # Extract creation time
         creation_time = getattr(instance, "creation_timestamp", "")
         # Try to extract last stopped/started/suspended times if present
         last_stopped = getattr(instance, "last_terminated_timestamp", "") or getattr(instance, "last_suspended_timestamp", "") or ""
         last_started = getattr(instance, "last_start_timestamp", "")
         last_suspended = getattr(instance, "last_suspended_timestamp", "")
+        # Compute days_running and days_stopped
+        status = getattr(instance, "status", "")
+        days_running = ""
+        days_stopped = ""
+        stopped_time = last_stopped
+        try:
+            now = datetime.now(timezone.utc)
+            if status == "RUNNING" and creation_time:
+                created = parse_timestamp(creation_time)
+                if created:
+                    days_running = (now - created).days
+                days_stopped = "N/A"
+                stopped_time = "N/A"
+            elif status == "TERMINATED":
+                if not stopped_time:
+                    stopped_time = creation_time
+                if stopped_time:
+                    stopped = parse_timestamp(stopped_time)
+                    if stopped:
+                        days_stopped = (now - stopped).days
+                    else:
+                        days_stopped = "N/A"
+                    if not stopped_time:
+                        stopped_time = "N/A"
+                else:
+                    stopped_time = "N/A"
+                    days_stopped = "N/A"
+                days_running = "N/A"
+            else:
+                days_running = "N/A"
+                days_stopped = "N/A"
+                stopped_time = "N/A"
+        except Exception:
+            days_running = "N/A"
+            days_stopped = "N/A"
+            stopped_time = "N/A"
         return {
             "id": getattr(instance, "id", ""),
             "name": getattr(instance, "name", ""),
-            "status": getattr(instance, "status", ""),
+            "status": status,
             "zone": getattr(instance, "zone", "").split("/")[-1] if getattr(instance, "zone", "") else "",
             "machineType": getattr(instance, "machine_type", "").split("/")[-1] if getattr(instance, "machine_type", "") else "",
             "creationTime": creation_time,
-            "lastStoppedTime": last_stopped,
+            "lastStoppedTime": stopped_time,
             "lastStartedTime": last_started,
             "lastSuspendedTime": last_suspended,
+            "daysStarted": days_running,
+            "daysStopped": days_stopped,
             "networkInterfaces": [getattr(ni, "network_i_p", "") for ni in getattr(instance, "network_interfaces", [])],
         }
 

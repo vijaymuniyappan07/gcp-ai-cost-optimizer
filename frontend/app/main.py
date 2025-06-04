@@ -152,10 +152,12 @@ VM_FORM_HTML = """
                     <th>Creation Time</th>
                     <th>Start Time</th>
                     <th>Stop Time</th>
+                    <th>Days Started</th>
+                    <th>Days Stopped</th>
                 </tr>
                 {% if vms|length == 0 %}
                     <tr>
-                        <td colspan="7" style="text-align:center; color:#888;">No VMs found for the selected location.</td>
+                        <td colspan="9" style="text-align:center; color:#888;">No VMs found for the selected location.</td>
                     </tr>
                 {% else %}
                     {% for vm in vms %}
@@ -165,8 +167,10 @@ VM_FORM_HTML = """
                             <td>{{ vm.zone }}</td>
                             <td>{{ vm.machineType }}</td>
                             <td>{{ vm.creationTime }}</td>
-                            <td>{{ vm.startTime }}</td>
-                            <td>{{ vm.stopTime }}</td>
+                            <td>{{ vm.lastStartedTime }}</td>
+                            <td>{{ vm.lastStoppedTime }}</td>
+                            <td>{{ vm.daysStarted }}</td>
+                            <td>{{ vm.daysStopped }}</td>
                         </tr>
                     {% endfor %}
                 {% endif %}
