@@ -60,14 +60,14 @@
 <body>
     <a href="{{ url_for('index') }}">&#8592; Back to Home</a>
     <h2>GKE Clusters</h2>
-    <form method="post" action="{{ url_for('gke') }}" id="gke-form" style="max-width: 350px; margin-bottom: 2rem;" onsubmit="showLoading()">
+    <form method="post" action="{{ url_for('gke') }}" id="gke-form" style="max-width: 350px; margin: 2rem auto 2rem auto; display: flex; flex-direction: column; gap: 1.2rem;" onsubmit="showLoading()">
         <label for="project_id">Project ID:</label>
-        <select name="project_id" id="project_id" required>
+        <select name="project_id" id="project_id" required style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #ccc;">
             {% for pid in project_ids %}
                 <option value="{{ pid }}" {% if pid == selected_project_id %}selected{% endif %}>{{ pid }}</option>
             {% endfor %}
         </select>
-        <button type="submit">Fetch GKE Clusters</button>
+        <button type="submit" style="width: 100%; padding: 0.7rem; background: #2980b9; color: #fff; border: none; border-radius: 4px; font-size: 1rem;">Fetch GKE Clusters</button>
     </form>
     <div id="loading-msg" class="loading" style="display:none;">
         <svg width="40" height="40" viewBox="0 0 40 40" style="vertical-align:middle;">
