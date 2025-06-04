@@ -67,20 +67,36 @@ def vms():
     loading = False
     selected_project_id = project_ids[0] if project_ids else ""
     selected_geo = list(geo_map.keys())[0] if geo_map else ""
-    sort_by = "name"
-    sort_dir = "asc"
-    page = 1
-    page_size = 10
+    sort_by = request.form.get("sort_by") or request.args.get("sort_by") or "name"
+    sort_dir = request.form.get("sort_dir") or request.args.get("sort_dir") or "asc"
+    if request.method == "POST":
+        try:
+            page = int(request.form.get("page", 1))
+        except Exception:
+            page = 1
+        try:
+            page_size = int(request.form.get("page_size", 10))
+            if page_size not in PAGINATION_OPTIONS:
+                page_size = 10
+        except Exception:
+            page_size = 10
+    else:
+        try:
+            page = int(request.args.get("page", 1))
+        except Exception:
+            page = 1
+        try:
+            page_size = int(request.args.get("page_size", 10))
+            if page_size not in PAGINATION_OPTIONS:
+                page_size = 10
+        except Exception:
+            page_size = 10
     total_pages = 1
+    total_vms = 0
 
     if request.method == "POST":
         selected_project_id = request.form.get("project_id", "")
         selected_geo = request.form.get("geo", "")
-        sort_by = request.form.get("sort_by", "name")
-        sort_dir = request.form.get("sort_dir", "asc")
-        page = int(request.form.get("page", 1))
-        page_size = int(request.form.get("page_size", 10))
-        total_vms = 0
         if not selected_project_id or not selected_geo:
             error = "Please select a project and a location."
         else:
