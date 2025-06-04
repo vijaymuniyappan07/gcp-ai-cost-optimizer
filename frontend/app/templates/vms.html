@@ -161,19 +161,136 @@
         <div class="result">
             <table class="modern-table">
                 <tr>
-                    <th class="sortable" onclick="setSort('name', '{{ sort_by }}', '{{ sort_dir }}')">Name</th>
-                    <th class="sortable" onclick="setSort('status', '{{ sort_by }}', '{{ sort_dir }}')">Status</th>
-                    <th class="sortable" onclick="setSort('zone', '{{ sort_by }}', '{{ sort_dir }}')">Zone</th>
-                    <th class="sortable" onclick="setSort('machineType', '{{ sort_by }}', '{{ sort_dir }}')">Machine Type</th>
-                    <th class="sortable" onclick="setSort('creationTime', '{{ sort_by }}', '{{ sort_dir }}')">Creation Time</th>
-                    <th class="sortable" onclick="setSort('lastStartedTime', '{{ sort_by }}', '{{ sort_dir }}')">Start Time</th>
-                    <th class="sortable" onclick="setSort('lastStoppedTime', '{{ sort_by }}', '{{ sort_dir }}')">Stop Time</th>
-                    <th class="sortable" onclick="setSort('daysStarted', '{{ sort_by }}', '{{ sort_dir }}')">Days Started</th>
-                    <th class="sortable" onclick="setSort('daysStopped', '{{ sort_by }}', '{{ sort_dir }}')">Days Stopped</th>
-                    <th class="sortable" onclick="setSort('internalIp', '{{ sort_by }}', '{{ sort_dir }}')">Internal IP</th>
-                    <th class="sortable" onclick="setSort('externalIp', '{{ sort_by }}', '{{ sort_dir }}')">External IP</th>
-                    <th class="sortable" onclick="setSort('vpcName', '{{ sort_by }}', '{{ sort_dir }}')">VPC Name</th>
-                    <th class="sortable" onclick="setSort('labels', '{{ sort_by }}', '{{ sort_dir }}')">Labels</th>
+                    <th class="sortable" onclick="setSort('name', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Name
+                        {% if sort_by == 'name' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('status', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Status
+                        {% if sort_by == 'status' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('zone', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Zone
+                        {% if sort_by == 'zone' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('machineType', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Machine Type
+                        {% if sort_by == 'machineType' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('creationTime', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Creation Time
+                        {% if sort_by == 'creationTime' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('lastStartedTime', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Start Time
+                        {% if sort_by == 'lastStartedTime' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('lastStoppedTime', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Stop Time
+                        {% if sort_by == 'lastStoppedTime' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('daysStarted', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Days Started
+                        {% if sort_by == 'daysStarted' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('daysStopped', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Days Stopped
+                        {% if sort_by == 'daysStopped' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('internalIp', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Internal IP
+                        {% if sort_by == 'internalIp' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('externalIp', '{{ sort_by }}', '{{ sort_dir }}')">
+                        External IP
+                        {% if sort_by == 'externalIp' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('vpcName', '{{ sort_by }}', '{{ sort_dir }}')">
+                        VPC Name
+                        {% if sort_by == 'vpcName' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('labels', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Labels
+                        {% if sort_by == 'labels' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
                 </tr>
                 {% if vms|length == 0 %}
                     <tr>
