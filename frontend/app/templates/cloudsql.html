@@ -55,6 +55,37 @@
         function showLoading() {
             document.getElementById('loading-msg').style.display = 'block';
         }
+        function setSort(field, currentSortBy, currentSortDir) {
+            var form = document.getElementById('cloudsql-form');
+            var sortByInput = document.getElementById('sort_by');
+            var sortDirInput = document.getElementById('sort_dir');
+            if (sortByInput && sortDirInput) {
+                if (currentSortBy === field) {
+                    sortDirInput.value = currentSortDir === "asc" ? "desc" : "asc";
+                } else {
+                    sortByInput.value = field;
+                    sortDirInput.value = "asc";
+                }
+                showLoading();
+                form.submit();
+            }
+        }
+        function downloadCSV() {
+            var table = document.querySelector('.modern-table');
+            var rows = Array.from(table.querySelectorAll('tr'));
+            var csv = rows.map(row => {
+                return Array.from(row.querySelectorAll('th,td'))
+                    .map(cell => '"' + cell.textContent.replace(/"/g, '""') + '"')
+                    .join(',');
+            }).join('\n');
+            var blob = new Blob([csv], { type: 'text/csv' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'cloudsql_report.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     </script>
 </head>
 <body>
@@ -67,6 +98,8 @@
                 <option value="{{ pid }}" {% if pid == selected_project_id %}selected{% endif %}>{{ pid }}</option>
             {% endfor %}
         </select>
+        <input type="hidden" name="sort_by" id="sort_by" value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir" id="sort_dir" value="{{ sort_dir }}">
         <button type="submit">Fetch Cloud SQL Instances</button>
     </form>
     <div id="loading-msg" class="loading" style="display:none;">
@@ -91,23 +124,161 @@
         <div class="error">{{ error }}</div>
     {% endif %}
     {% if instances is not none %}
+        {% if instances|length > 0 %}
+            <button type="button" onclick="downloadCSV()" style="margin-bottom: 1rem; padding: 0.4rem 1.2rem; background: #2980b9; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer;">Download CSV</button>
+        {% endif %}
         <table class="modern-table">
             <tr>
-                <th>Name</th>
-                <th>Region</th>
-                <th>Database Version</th>
-                <th>Status</th>
-                <th>GCE Zone</th>
-                <th>IP Addresses</th>
-                <th>Tier</th>
-                <th>Availability Type</th>
-                <th>Data Disk Type</th>
-                <th>Data Disk Size (GB)</th>
-                <th>Storage Auto Resize</th>
-                <th>Pricing Plan</th>
-                <th>Network VPC</th>
-                <th>Labels</th>
-                <th>Creation Time</th>
+                <th class="sortable" onclick="setSort('name', '{{ sort_by }}', '{{ sort_dir }}')">
+                    Name
+                    {% if sort_by == 'name' %}
+                        {% if sort_dir == 'asc' %}
+                            &#9650;
+                        {% else %}
+                            &#9660;
+                        {% endif %}
+                    {% endif %}
+                </th>
+                <th class="sortable" onclick="setSort('region', '{{ sort_by }}', '{{ sort_dir }}')">
+                    Region
+                    {% if sort_by == 'region' %}
+                        {% if sort_dir == 'asc' %}
+                            &#9650;
+                        {% else %}
+                            &#9660;
+                        {% endif %}
+                    {% endif %}
+                </th>
+                <th class="sortable" onclick="setSort('databaseVersion', '{{ sort_by }}', '{{ sort_dir }}')">
+                    Database Version
+                    {% if sort_by == 'databaseVersion' %}
+                        {% if sort_dir == 'asc' %}
+                            &#9650;
+                        {% else %}
+                            &#9660;
+                        {% endif %}
+                    {% endif %}
+                </th>
+                <th class="sortable" onclick="setSort('state', '{{ sort_by }}', '{{ sort_dir }}')">
+                    Status
+                    {% if sort_by == 'state' %}
+                        {% if sort_dir == 'asc' %}
+                            &#9650;
+                        {% else %}
+                            &#9660;
+                        {% endif %}
+                    {% endif %}
+                </th>
+                <th class="sortable" onclick="setSort('gceZone', '{{ sort_by }}', '{{ sort_dir }}')">
+                    GCE Zone
+                    {% if sort_by == 'gceZone' %}
+                        {% if sort_dir == 'asc' %}
+                            &#9650;
+                        {% else %}
+                            &#9660;
+                        {% endif %}
+                    {% endif %}
+                </th>
+                <th class="sortable" onclick="setSort('ipAddresses', '{{ sort_by }}', '{{ sort_dir }}')">
+                    IP Addresses
+                    {% if sort_by == 'ipAddresses' %}
+                        {% if sort_dir == 'asc' %}
+                            &#9650;
+                        {% else %}
+                            &#9660;
+                        {% endif %}
+                    {% endif %}
+                </th>
+                <th class="sortable" onclick="setSort('tier', '{{ sort_by }}', '{{ sort_dir }}')">
+                    Tier
+                    {% if sort_by == 'tier' %}
+                        {% if sort_dir == 'asc' %}
+                            &#9650;
+                        {% else %}
+                            &#9660;
+                        {% endif %}
+                    {% endif %}
+                </th>
+                <th class="sortable" onclick="setSort('availabilityType', '{{ sort_by }}', '{{ sort_dir }}')">
+                    Availability Type
+                    {% if sort_by == 'availabilityType' %}
+                        {% if sort_dir == 'asc' %}
+                            &#9650;
+                        {% else %}
+                            &#9660;
+                        {% endif %}
+                    {% endif %}
+                </th>
+                <th class="sortable" onclick="setSort('dataDiskType', '{{ sort_by }}', '{{ sort_dir }}')">
+                    Data Disk Type
+                    {% if sort_by == 'dataDiskType' %}
+                        {% if sort_dir == 'asc' %}
+                            &#9650;
+                        {% else %}
+                            &#9660;
+                        {% endif %}
+                    {% endif %}
+                </th>
+                <th class="sortable" onclick="setSort('dataDiskSizeGb', '{{ sort_by }}', '{{ sort_dir }}')">
+                    Data Disk Size (GB)
+                    {% if sort_by == 'dataDiskSizeGb' %}
+                        {% if sort_dir == 'asc' %}
+                            &#9650;
+                        {% else %}
+                            &#9660;
+                        {% endif %}
+                    {% endif %}
+                </th>
+                <th class="sortable" onclick="setSort('storageAutoResize', '{{ sort_by }}', '{{ sort_dir }}')">
+                    Storage Auto Resize
+                    {% if sort_by == 'storageAutoResize' %}
+                        {% if sort_dir == 'asc' %}
+                            &#9650;
+                        {% else %}
+                            &#9660;
+                        {% endif %}
+                    {% endif %}
+                </th>
+                <th class="sortable" onclick="setSort('pricingPlan', '{{ sort_by }}', '{{ sort_dir }}')">
+                    Pricing Plan
+                    {% if sort_by == 'pricingPlan' %}
+                        {% if sort_dir == 'asc' %}
+                            &#9650;
+                        {% else %}
+                            &#9660;
+                        {% endif %}
+                    {% endif %}
+                </th>
+                <th class="sortable" onclick="setSort('vpcNetwork', '{{ sort_by }}', '{{ sort_dir }}')">
+                    Network VPC
+                    {% if sort_by == 'vpcNetwork' %}
+                        {% if sort_dir == 'asc' %}
+                            &#9650;
+                        {% else %}
+                            &#9660;
+                        {% endif %}
+                    {% endif %}
+                </th>
+                <th class="sortable" onclick="setSort('labels', '{{ sort_by }}', '{{ sort_dir }}')">
+                    Labels
+                    {% if sort_by == 'labels' %}
+                        {% if sort_dir == 'asc' %}
+                            &#9650;
+                        {% else %}
+                            &#9660;
+                        {% endif %}
+                    {% endif %}
+                </th>
+                <th class="sortable" onclick="setSort('creationTime', '{{ sort_by }}', '{{ sort_dir }}')">
+                    Creation Time
+                    {% if sort_by == 'creationTime' %}
+                        {% if sort_dir == 'asc' %}
+                            &#9650;
+                        {% else %}
+                            &#9660;
+                        {% endif %}
+                    {% endif %}
+                </th>
             </tr>
             {% if instances|length == 0 %}
                 <tr>
@@ -115,7 +286,7 @@
                 </tr>
             {% else %}
                 {% for inst in instances %}
-                    <tr class="{% if inst.state != 'RUNNABLE' %}non-running{% endif %}">
+                    <tr class="{% if inst.state and (inst.state|lower == 'stopped' or inst.state|lower == 'suspended') %}non-running{% endif %}">
                         <td>{{ inst.name }}</td>
                         <td>{{ inst.region }}</td>
                         <td>{{ inst.databaseVersion }}</td>
