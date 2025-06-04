@@ -49,6 +49,38 @@ def index():
         return redirect(url_for("login"))
     return render_template("home.html", role=session["role"])
 
+@app.route("/cloudsql", methods=["GET", "POST"])
+def cloudsql():
+    loading = True
+    error = None
+    instances = None
+    project_ids = []
+    selected_project_id = ""
+    try:
+        # Fetch project ids for the dropdown
+        resp = requests.get(f"{BACKEND_API_URL}/gcp/options", timeout=10)
+        resp.raise_for_status()
+        options = resp.json()
+        project_ids = options.get("project_ids", [])
+        selected_project_id = project_ids[0] if project_ids else ""
+    except Exception as e:
+        error = f"Error fetching project ids: {e}"
+        loading = False
+        return render_template("cloudsql.html", instances=None, error=error, loading=loading, project_ids=[], selected_project_id=None)
+
+    if request.method == "POST":
+        selected_project_id = request.form.get("project_id", "") or selected_project_id
+    try:
+        resp = requests.get(f"{BACKEND_API_URL}/resources/cloudsql", params={"project_id": selected_project_id}, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        instances = data.get("cloudsql", [])
+        loading = False
+    except Exception as e:
+        error = f"Error fetching Cloud SQL instances: {e}"
+        loading = False
+    return render_template("cloudsql.html", instances=instances, error=error, loading=loading, project_ids=project_ids, selected_project_id=selected_project_id)
+
 @app.route("/vms", methods=["GET", "POST"])
 def vms():
     if "user" not in session or "role" not in session:

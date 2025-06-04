@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 from app.services.gcp_client import GCPClient
-from googleapiclient.discovery import build
+from app.services.vm_service import VMService
 import traceback
 
 print("[DEBUG] Loading gcp_resources router")
@@ -57,25 +57,26 @@ def get_vms(
     Returns live VM data from GCP for the given project and zones.
     """
     try:
-        gcp_client = GCPClient()
-        use_project_id = project_id or gcp_client.project_id
+        vm_service = VMService(project_id=project_id)
         selected_zones = [z.strip() for z in zones.split(",")] if zones else None
-        vms = gcp_client.list_vms(project_id=use_project_id, zones=selected_zones)
+        vms = vm_service.list_vms(project_id=project_id, zones=selected_zones)
         return JSONResponse(content={"vms": vms})
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
+from app.services.cloudsql_service import CloudSQLService
+
 @router.get("/resources/cloudsql")
-def get_cloudsql():
+def get_cloudsql(project_id: str = Query(None, description="GCP project id")):
     """
-    Returns mock Cloud SQL data for testing.
+    Returns real Cloud SQL data for the given project.
     """
-    return {
-        "cloudsql": [
-            {"id": "sql-1", "name": "test-sql-1", "status": "RUNNABLE"},
-            {"id": "sql-2", "name": "test-sql-2", "status": "SUSPENDED"}
-        ]
-    }
+    try:
+        cloudsql_service = CloudSQLService(project_id=project_id)
+        instances = cloudsql_service.list_cloudsql_instances(project_id=project_id)
+        return JSONResponse(content={"cloudsql": instances})
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
 @router.get("/resources/gke")
 def get_gke():

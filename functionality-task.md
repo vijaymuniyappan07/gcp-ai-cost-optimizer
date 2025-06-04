@@ -27,7 +27,9 @@ This list prioritizes visual feedback and parallel backend/frontend progress.
 ## 3. VMs: Backend + Frontend
 
 - **[COMPLETED] Backend:**
-  - Implement real GCP VM data fetching in `gcp_client.py` and wire to `/resources/vms`.
+  - Refactor: Move VM logic to `backend/app/services/vm_service.py` and shared project/zone logic to `backend/app/services/gcp_client.py`.
+  - API endpoints use resource-specific service files (e.g., `VMService` for `/resources/vms`).
+  - Implement real GCP VM data fetching and wire to `/resources/vms`.
   - Test: Endpoint returns real (or mocked) VM data.
 
 - **[COMPLETED] Frontend:**
@@ -40,13 +42,15 @@ This list prioritizes visual feedback and parallel backend/frontend progress.
 
 ## 4. Cloud SQL: Backend + Frontend
 
-- **Backend:**
-  - Implement Cloud SQL data fetching in `gcp_client.py` and wire to `/resources/cloudsql`.
-  - Test: Endpoint returns real (or mocked) Cloud SQL data.
+- **[COMPLETED] Backend:**
+  - Refactor: Move Cloud SQL logic to `backend/app/services/cloudsql_service.py`.
+  - API endpoint `/resources/cloudsql` uses `CloudSQLService` to return real Cloud SQL data.
+  - Test: Endpoint returns real Cloud SQL data for the selected project.
 
-- **Frontend:**
-  - Update `ResourceSummary` to display Cloud SQL data.
+- **[COMPLETED] Frontend:**
+  - Add `/cloudsql` route and `cloudsql.html` template to display Cloud SQL data.
   - Add loading/error states for Cloud SQL.
+  - Add "Cloud SQL" link to the home page.
   - Test: UI shows live Cloud SQL data.
 
 ---
@@ -54,7 +58,7 @@ This list prioritizes visual feedback and parallel backend/frontend progress.
 ## 5. GKE: Backend + Frontend
 
 - **Backend:**
-  - Implement GKE cluster data fetching in `gcp_client.py` and wire to `/resources/gke`.
+  - Implement GKE cluster data fetching in a dedicated service file and wire to `/resources/gke`.
   - Test: Endpoint returns real (or mocked) GKE data.
 
 - **Frontend:**
@@ -67,7 +71,7 @@ This list prioritizes visual feedback and parallel backend/frontend progress.
 ## 6. Filestore: Backend + Frontend
 
 - **Backend:**
-  - Implement Filestore data fetching in `gcp_client.py` and wire to `/resources/filestore`.
+  - Implement Filestore data fetching in a dedicated service file and wire to `/resources/filestore`.
   - Test: Endpoint returns real (or mocked) Filestore data.
 
 - **Frontend:**
@@ -80,7 +84,7 @@ This list prioritizes visual feedback and parallel backend/frontend progress.
 ## 7. Cloud Storage: Backend + Frontend
 
 - **Backend:**
-  - Implement Cloud Storage bucket data fetching in `gcp_client.py` and wire to `/resources/storage`.
+  - Implement Cloud Storage bucket data fetching in a dedicated service file and wire to `/resources/storage`.
   - Test: Endpoint returns real (or mocked) Storage data.
 
 - **Frontend:**
