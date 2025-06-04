@@ -144,10 +144,18 @@ VM_FORM_HTML = """
     {% if vms is not none %}
         <div class="result">
             <table border="1" cellpadding="5">
-                <tr><th>Name</th><th>Status</th><th>Zone</th><th>Machine Type</th></tr>
+                <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Zone</th>
+                    <th>Machine Type</th>
+                    <th>Creation Time</th>
+                    <th>Start Time</th>
+                    <th>Stop Time</th>
+                </tr>
                 {% if vms|length == 0 %}
                     <tr>
-                        <td colspan="4" style="text-align:center; color:#888;">No VMs found for the selected location.</td>
+                        <td colspan="7" style="text-align:center; color:#888;">No VMs found for the selected location.</td>
                     </tr>
                 {% else %}
                     {% for vm in vms %}
@@ -156,6 +164,9 @@ VM_FORM_HTML = """
                             <td>{{ vm.status }}</td>
                             <td>{{ vm.zone }}</td>
                             <td>{{ vm.machineType }}</td>
+                            <td>{{ vm.creationTime }}</td>
+                            <td>{{ vm.startTime }}</td>
+                            <td>{{ vm.stopTime }}</td>
                         </tr>
                     {% endfor %}
                 {% endif %}

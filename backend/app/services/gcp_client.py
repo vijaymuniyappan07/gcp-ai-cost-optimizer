@@ -1,73 +1,152 @@
-from googleapiclient.discovery import build
-from app.utils.auth import load_gcp_credentials
+from google.cloud import compute_v1
+from google.auth.exceptions import DefaultCredentialsError
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dotenv import load_dotenv
+from datetime import datetime, timezone
+
+load_dotenv()
+
+GEO_MAP = {
+    "us": ["us-"],
+    "europe": ["europe-"],
+    "asia": ["asia-"],
+    "australia": ["australia-"],
+    "southamerica": ["southamerica-"],
+    "northamerica": ["northamerica-"],
+    "canada": ["northamerica-", "canada-"],
+    "africa": ["africa-"],
+    "me": ["me-"],
+    "asia-pacific": ["asia-", "australia-"],
+    "global": [],  # special: all regions
+}
+
+def geo_choices():
+    return list(GEO_MAP.keys())
+
+def parse_timestamp(ts):
+    try:
+        return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S.%f%z")
+    except Exception:
+        try:
+            return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S%z")
+        except Exception:
+            return None
 
 class GCPClient:
-    """
-    Handles GCP API calls (Compute, SQL, GKE, Filestore, Storage).
-    """
-
-    def __init__(self):
-        self.credentials = load_gcp_credentials()
-        self.project_id = os.getenv("GCP_PROJECT_ID")
-        if not self.project_id:
+    def __init__(self, project_id=None):
+        env_projects = os.getenv("GCP_PROJECT_ID", "")
+        self.project_ids = [p.strip() for p in env_projects.split(",") if p.strip()]
+        if not self.project_ids:
             raise ValueError("GCP_PROJECT_ID environment variable is not set. Please add it to your .env file.")
+        self.project_id = project_id or self.project_ids[0]
         self.max_workers = int(os.getenv("GCP_VM_FETCH_MAX_WORKERS", 8))
+        self.zone_timeout = int(os.getenv("GCP_ZONE_FETCH_TIMEOUT", 10))  # seconds
 
-    def _fetch_zone_vms(self, compute, zone, project_id):
-        vms = []
-        print(f"[DEBUG] Fetching instances in zone: {zone}")
-        req = compute.instances().list(project=project_id, zone=zone)
+    def list_regions(self, project_id=None):
         try:
-            resp = req.execute()
-            print(f"[DEBUG] Response for zone {zone}: {resp}")
-            for inst in resp.get("items", []):
-                vms.append({
-                    "id": inst.get("id"),
-                    "name": inst.get("name"),
-                    "status": inst.get("status"),
-                    "zone": zone,
-                    "machineType": inst.get("machineType", "").split("/")[-1],
-                    "networkInterfaces": inst.get("networkInterfaces", []),
-                })
+            pid = project_id or self.project_id
+            zones_client = compute_v1.ZonesClient()
+            zones = [z.name for z in zones_client.list(project=pid)]
+            regions = sorted(set(z.split("-")[0] + "-" + z.split("-")[1] for z in zones if "-" in z))
+            return regions
         except Exception as e:
-            print(f"[DEBUG] Exception in zone {zone}: {e}")
-        return vms
+            print(f"Error listing regions: {e}")
+            return []
 
-    def list_vms(self, project_id=None, zones=None):
-        """
-        Fetches VM instances from Google Compute Engine in parallel across zones.
-        Returns a list of dicts with VM info.
-        """
-        print("[DEBUG] Starting list_vms")
+    def list_zones(self, project_id=None):
+        try:
+            pid = project_id or self.project_id
+            zones_client = compute_v1.ZonesClient()
+            return [z.name for z in zones_client.list(project=pid)]
+        except Exception as e:
+            print(f"Error listing zones: {e}")
+            return []
+
+    def list_vms(self, project_id=None, zone=None, regions=None, geo_choices=None, zones=None):
+        print(f"[DEBUG] list_vms called with project_id={project_id}, zone={zone}, regions={regions}, geo_choices={geo_choices}, zones={zones}")
         project_id = project_id or self.project_id
-        if not project_id:
-            print("[DEBUG] GCP_PROJECT_ID is missing")
-            raise ValueError("GCP_PROJECT_ID environment variable is not set. Please add it to your .env file.")
-        print(f"[DEBUG] Using project_id: {project_id}")
-        compute = build("compute", "v1", credentials=self.credentials)
-        print("[DEBUG] Fetching zones...")
-        if zones is None:
-            zones_req = compute.zones().list(project=project_id)
-            zones_resp = zones_req.execute()
-            zones = [z["name"] for z in zones_resp.get("items", [])]
-        print(f"[DEBUG] Using zones: {zones}")
+        start_time = time.time()
+        try:
+            instances_client = compute_v1.InstancesClient()
+            vms = []
+            if zone:
+                print(f"[DEBUG] Listing VMs in zone: {zone}")
+                request = compute_v1.ListInstancesRequest(project=project_id, zone=zone)
+                for instance in instances_client.list(request=request):
+                    vms.append(self._instance_to_dict(instance))
+            else:
+                print("[DEBUG] Listing all zones in the project")
+                zones_client = compute_v1.ZonesClient()
+                all_zones = [z.name for z in zones_client.list(project=project_id)]
+                if zones:
+                    use_zones = zones
+                elif geo_choices:
+                    region_prefixes = []
+                    for geo in geo_choices:
+                        region_prefixes.extend(GEO_MAP.get(geo, []))
+                    if "global" in geo_choices:
+                        use_zones = all_zones
+                    else:
+                        use_zones = [z for z in all_zones if any(z.startswith(prefix) for prefix in region_prefixes)]
+                elif regions:
+                    use_zones = [z for z in all_zones if any(z.startswith(region + "-") for region in regions)]
+                else:
+                    use_zones = all_zones
+                print(f"[DEBUG] Using zones: {use_zones}")
 
-        vms = []
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            future_to_zone = {executor.submit(self._fetch_zone_vms, compute, zone, project_id): zone for zone in zones}
-            for future in as_completed(future_to_zone):
-                zone = future_to_zone[future]
-                try:
-                    zone_vms = future.result()
-                    vms.extend(zone_vms)
-                except Exception as e:
-                    print(f"[DEBUG] Exception in thread for zone {zone}: {e}")
-            # Wait for all futures to complete
+                def fetch_zone(zone):
+                    local_vms = []
+                    try:
+                        print(f"[DEBUG] Listing VMs in zone: {zone}")
+                        request = compute_v1.ListInstancesRequest(project=project_id, zone=zone)
+                        for instance in instances_client.list(request=request):
+                            local_vms.append(self._instance_to_dict(instance))
+                    except Exception as e:
+                        print(f"[ERROR] Failed to fetch VMs in zone {zone}: {e}")
+                    return local_vms
 
-        print(f"[DEBUG] Total VMs found: {len(vms)}")
-        return vms
+                vms = []
+                with ThreadPoolExecutor(max_workers=min(self.max_workers, len(use_zones))) as executor:
+                    future_to_zone = {executor.submit(fetch_zone, zone): zone for zone in use_zones}
+                    for future in as_completed(future_to_zone):
+                        zone = future_to_zone[future]
+                        try:
+                            vms.extend(future.result())
+                        except Exception as exc:
+                            print(f"[ERROR] Zone {zone} generated an exception: {exc}")
+                        if time.time() - start_time > 60:
+                            print("[ERROR] Timeout: listing VMs took too long.")
+                            break
+            print(f"[DEBUG] Found {len(vms)} VMs")
+            return vms
+        except DefaultCredentialsError:
+            print("GCP credentials not found. Please set up authentication.")
+            return []
+        except Exception as e:
+            print(f"Error listing VMs: {e}")
+            return []
+
+    def _instance_to_dict(self, instance):
+        # Only creation time is available from the API
+        creation_time = getattr(instance, "creation_timestamp", "")
+        # Try to extract last stopped/started/suspended times if present
+        last_stopped = getattr(instance, "last_terminated_timestamp", "") or getattr(instance, "last_suspended_timestamp", "") or ""
+        last_started = getattr(instance, "last_start_timestamp", "")
+        last_suspended = getattr(instance, "last_suspended_timestamp", "")
+        return {
+            "id": getattr(instance, "id", ""),
+            "name": getattr(instance, "name", ""),
+            "status": getattr(instance, "status", ""),
+            "zone": getattr(instance, "zone", "").split("/")[-1] if getattr(instance, "zone", "") else "",
+            "machineType": getattr(instance, "machine_type", "").split("/")[-1] if getattr(instance, "machine_type", "") else "",
+            "creationTime": creation_time,
+            "lastStoppedTime": last_stopped,
+            "lastStartedTime": last_started,
+            "lastSuspendedTime": last_suspended,
+            "networkInterfaces": [getattr(ni, "network_i_p", "") for ni in getattr(instance, "network_interfaces", [])],
+        }
 
     # Stubs for other resources
     def list_cloudsql_instances(self):

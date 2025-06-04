@@ -16,38 +16,30 @@ def get_gcp_options():
     try:
         print("[DEBUG] /gcp/options called")
         gcp_client = GCPClient()
-        print(f"[DEBUG] GCPClient project_id: {gcp_client.project_id}")
-        compute = gcp_client.credentials and build("compute", "v1", credentials=gcp_client.credentials)
-        zones = []
+        print(f"[DEBUG] GCPClient project_ids: {gcp_client.project_ids}")
+        zones = gcp_client.list_zones()
         geo_map = {}
-        if compute:
-            print("[DEBUG] Fetching zones from GCP...")
-            zones_req = compute.zones().list(project=gcp_client.project_id)
-            zones_resp = zones_req.execute()
-            print(f"[DEBUG] zones_resp: {zones_resp}")
-            for z in zones_resp.get("items", []):
-                zone_name = z["name"]
-                region = zone_name.split("-")[0]
-                # Map region prefix to geo (lowercase)
-                if region.startswith("us"):
-                    geo = "us"
-                elif region.startswith("europe"):
-                    geo = "europe"
-                elif region.startswith("asia"):
-                    geo = "asia"
-                elif region.startswith("australia"):
-                    geo = "australia"
-                elif region.startswith("southamerica"):
-                    geo = "southamerica"
-                elif region.startswith("northamerica"):
-                    geo = "northamerica"
-                else:
-                    geo = "other"
-                geo_map.setdefault(geo, []).append(zone_name)
-                zones.append(zone_name)
-        print(f"[DEBUG] Returning project_ids: {[gcp_client.project_id]}, zones: {zones}, geo_map: {geo_map}")
+        for zone_name in zones:
+            region = zone_name.split("-")[0]
+            # Map region prefix to geo (lowercase)
+            if region.startswith("us"):
+                geo = "us"
+            elif region.startswith("europe"):
+                geo = "europe"
+            elif region.startswith("asia"):
+                geo = "asia"
+            elif region.startswith("australia"):
+                geo = "australia"
+            elif region.startswith("southamerica"):
+                geo = "southamerica"
+            elif region.startswith("northamerica"):
+                geo = "northamerica"
+            else:
+                geo = "other"
+            geo_map.setdefault(geo, []).append(zone_name)
+        print(f"[DEBUG] Returning project_ids: {gcp_client.project_ids}, zones: {zones}, geo_map: {geo_map}")
         return JSONResponse(content={
-            "project_ids": [gcp_client.project_id] if gcp_client.project_id else [],
+            "project_ids": gcp_client.project_ids,
             "zones": zones,
             "geo_map": geo_map
         })
