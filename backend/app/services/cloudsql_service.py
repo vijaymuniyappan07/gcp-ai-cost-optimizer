@@ -25,22 +25,20 @@ class CloudSQLService:
             instances = []
             for instance in response.get("items", []):
                 settings = instance.get("settings", {})
-                # Stopped time: use suspensionReason or blank
-                stopped_time = ""
-                state = instance.get("state", "")
-                if instance.get("suspensionReason"):
-                    stopped_time = instance["suspensionReason"][0]
-                    state = "STOPPED"
                 instances.append({
                     "name": instance.get("name", ""),
                     "region": instance.get("region", ""),
                     "databaseVersion": instance.get("databaseVersion", ""),
-                    "state": state,
+                    "state": instance.get("state", ""),
                     "gceZone": instance.get("gceZone", ""),
                     "ipAddresses": [ip.get("ipAddress", "") for ip in instance.get("ipAddresses", [])],
                     "tier": settings.get("tier", ""),
                     "creationTime": instance.get("createTime", ""),
-                    "stoppedTime": stopped_time,
+                    "availabilityType": settings.get("availabilityType", ""),
+                    "dataDiskType": settings.get("dataDiskType", ""),
+                    "dataDiskSizeGb": settings.get("dataDiskSizeGb", ""),
+                    "storageAutoResize": settings.get("storageAutoResize", ""),
+                    "pricingPlan": settings.get("pricingPlan", ""),
                 })
             return instances
         except Exception as e:

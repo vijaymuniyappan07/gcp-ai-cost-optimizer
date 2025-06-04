@@ -87,15 +87,19 @@
                 <th>Region</th>
                 <th>Database Version</th>
                 <th>Status</th>
-                <th>Stopped Time</th>
                 <th>GCE Zone</th>
                 <th>IP Addresses</th>
                 <th>Tier</th>
+                <th>Availability Type</th>
+                <th>Data Disk Type</th>
+                <th>Data Disk Size (GB)</th>
+                <th>Storage Auto Resize</th>
+                <th>Pricing Plan</th>
                 <th>Creation Time</th>
             </tr>
             {% if instances|length == 0 %}
                 <tr>
-                    <td colspan="9" style="text-align:center; color:#888;">No Cloud SQL instances found.</td>
+                    <td colspan="13" style="text-align:center; color:#888;">No Cloud SQL instances found.</td>
                 </tr>
             {% else %}
                 {% for inst in instances %}
@@ -104,10 +108,14 @@
                         <td>{{ inst.region }}</td>
                         <td>{{ inst.databaseVersion }}</td>
                         <td>{{ inst.state }}</td>
-                        <td>{{ inst.stoppedTime }}</td>
                         <td>{{ inst.gceZone }}</td>
                         <td>{{ inst.ipAddresses|join(', ') }}</td>
                         <td>{{ inst.tier }}</td>
+                        <td>{{ inst.availabilityType }}</td>
+                        <td>{{ inst.dataDiskType }}</td>
+                        <td>{{ inst.dataDiskSizeGb }}</td>
+                        <td>{{ inst.storageAutoResize }}</td>
+                        <td>{{ inst.pricingPlan }}</td>
                         <td>{{ inst.creationTime }}</td>
                     </tr>
                 {% endfor %}
