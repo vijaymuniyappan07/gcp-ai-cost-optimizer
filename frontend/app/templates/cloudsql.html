@@ -40,6 +40,16 @@
         .modern-table tr:hover {
             background: #f0f4f8;
         }
+        .modern-table tr.non-running {
+            background: #23272f;
+            color: #fff;
+        }
+        .modern-table tr.non-running td, .modern-table tr.non-running th {
+            color: #fff;
+        }
+        .modern-table tr.non-running:hover {
+            background: #2d323c;
+        }
     </style>
     <script>
         function showLoading() {
@@ -95,15 +105,17 @@
                 <th>Data Disk Size (GB)</th>
                 <th>Storage Auto Resize</th>
                 <th>Pricing Plan</th>
+                <th>Network VPC</th>
+                <th>Labels</th>
                 <th>Creation Time</th>
             </tr>
             {% if instances|length == 0 %}
                 <tr>
-                    <td colspan="13" style="text-align:center; color:#888;">No Cloud SQL instances found.</td>
+                    <td colspan="15" style="text-align:center; color:#888;">No Cloud SQL instances found.</td>
                 </tr>
             {% else %}
                 {% for inst in instances %}
-                    <tr>
+                    <tr class="{% if inst.state != 'RUNNABLE' %}non-running{% endif %}">
                         <td>{{ inst.name }}</td>
                         <td>{{ inst.region }}</td>
                         <td>{{ inst.databaseVersion }}</td>
@@ -116,6 +128,8 @@
                         <td>{{ inst.dataDiskSizeGb }}</td>
                         <td>{{ inst.storageAutoResize }}</td>
                         <td>{{ inst.pricingPlan }}</td>
+                        <td>{{ inst.vpcNetwork }}</td>
+                        <td>{{ inst.labels }}</td>
                         <td>{{ inst.creationTime }}</td>
                     </tr>
                 {% endfor %}
