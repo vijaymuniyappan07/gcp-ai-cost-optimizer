@@ -171,6 +171,23 @@ class GCPClient:
             days_running = "N/A"
             days_stopped = "N/A"
             stopped_time = "N/A"
+
+        # Internal IP, External IP, VPC Name, Labels
+        internal_ip = "N/A"
+        external_ip = "N/A"
+        vpc_name = "N/A"
+        if hasattr(instance, "network_interfaces") and instance.network_interfaces:
+            ni = instance.network_interfaces[0]
+            internal_ip = getattr(ni, "network_i_p", None) or getattr(ni, "network_ip", None) or "N/A"
+            if hasattr(ni, "access_configs") and ni.access_configs:
+                ac = ni.access_configs[0]
+                external_ip = getattr(ac, "nat_i_p", None) or getattr(ac, "nat_ip", None) or "N/A"
+            if hasattr(ni, "network"):
+                vpc_url = getattr(ni, "network", "")
+                vpc_name = vpc_url.split("/")[-1] if vpc_url else "N/A"
+        labels = getattr(instance, "labels", {})
+        labels_str = ", ".join(f"{k}:{v}" for k, v in labels.items()) if labels else ""
+
         return {
             "id": getattr(instance, "id", ""),
             "name": getattr(instance, "name", ""),
@@ -183,7 +200,10 @@ class GCPClient:
             "lastSuspendedTime": last_suspended,
             "daysStarted": days_running,
             "daysStopped": days_stopped,
-            "networkInterfaces": [getattr(ni, "network_i_p", "") for ni in getattr(instance, "network_interfaces", [])],
+            "internalIp": internal_ip,
+            "externalIp": external_ip,
+            "vpcName": vpc_name,
+            "labels": labels_str,
         }
 
     # Stubs for other resources
