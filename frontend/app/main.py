@@ -109,17 +109,32 @@ VM_FORM_HTML = """
         .error { color: #c0392b; margin-top: 1rem; }
         .result { margin-top: 2rem; }
         .loading { color: #2980b9; font-weight: bold; margin-top: 1rem; }
+        th.sortable { cursor: pointer; text-decoration: underline; }
     </style>
     <script>
         function showLoading() {
             document.getElementById('loading-msg').style.display = 'block';
+        }
+        function setSort(field, currentSortBy, currentSortDir) {
+            var form = document.getElementById('vm-form');
+            var sortByInput = document.getElementById('sort_by');
+            var sortDirInput = document.getElementById('sort_dir');
+            if (sortByInput && sortDirInput) {
+                if (currentSortBy === field) {
+                    sortDirInput.value = currentSortDir === "asc" ? "desc" : "asc";
+                } else {
+                    sortByInput.value = field;
+                    sortDirInput.value = "asc";
+                }
+                form.submit();
+            }
         }
     </script>
 </head>
 <body>
     <a href="{{ url_for('index') }}">&#8592; Back to Home</a>
     <h2>VMs (Compute Engine)</h2>
-    <form method="post" action="{{ url_for('vms') }}" onsubmit="showLoading()">
+    <form method="post" action="{{ url_for('vms') }}" onsubmit="showLoading()" id="vm-form">
         <label for="project_id">Project ID:</label>
         <select name="project_id" id="project_id" required>
             {% for pid in project_ids %}
@@ -132,6 +147,8 @@ VM_FORM_HTML = """
                 <option value="{{ geo }}" {% if geo == selected_geo %}selected{% endif %}>{{ geo }}</option>
             {% endfor %}
         </select>
+        <input type="hidden" name="sort_by" id="sort_by" value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir" id="sort_dir" value="{{ sort_dir }}">
         <button type="submit">Fetch VMs</button>
     </form>
     <div id="loading-msg" class="loading" style="display:none;">Loading VMs, please wait...</div>
@@ -145,15 +162,15 @@ VM_FORM_HTML = """
         <div class="result">
             <table border="1" cellpadding="5">
                 <tr>
-                    <th>Name</th>
-                    <th>Status</th>
-                    <th>Zone</th>
-                    <th>Machine Type</th>
-                    <th>Creation Time</th>
-                    <th>Start Time</th>
-                    <th>Stop Time</th>
-                    <th>Days Started</th>
-                    <th>Days Stopped</th>
+                    <th class="sortable" onclick="setSort('name', '{{ sort_by }}', '{{ sort_dir }}')">Name</th>
+                    <th class="sortable" onclick="setSort('status', '{{ sort_by }}', '{{ sort_dir }}')">Status</th>
+                    <th class="sortable" onclick="setSort('zone', '{{ sort_by }}', '{{ sort_dir }}')">Zone</th>
+                    <th class="sortable" onclick="setSort('machineType', '{{ sort_by }}', '{{ sort_dir }}')">Machine Type</th>
+                    <th class="sortable" onclick="setSort('creationTime', '{{ sort_by }}', '{{ sort_dir }}')">Creation Time</th>
+                    <th class="sortable" onclick="setSort('lastStartedTime', '{{ sort_by }}', '{{ sort_dir }}')">Start Time</th>
+                    <th class="sortable" onclick="setSort('lastStoppedTime', '{{ sort_by }}', '{{ sort_dir }}')">Stop Time</th>
+                    <th class="sortable" onclick="setSort('daysStarted', '{{ sort_by }}', '{{ sort_dir }}')">Days Started</th>
+                    <th class="sortable" onclick="setSort('daysStopped', '{{ sort_by }}', '{{ sort_dir }}')">Days Stopped</th>
                 </tr>
                 {% if vms|length == 0 %}
                     <tr>
@@ -225,23 +242,25 @@ def vms():
         project_ids = options.get("project_ids", [])
         geo_map = options.get("geo_map", {})
     except Exception as e:
-        return render_template_string(VM_FORM_HTML, project_ids=[], geo_map={}, error=f"Error fetching options: {e}", vms=None, selected_project_id=None, selected_geo=None, loading=False)
+        return render_template_string(VM_FORM_HTML, project_ids=[], geo_map={}, error=f"Error fetching options: {e}", vms=None, selected_project_id=None, selected_geo=None, loading=False, sort_by="name", sort_dir="asc")
 
     vms = None
     error = None
     loading = False
     selected_project_id = project_ids[0] if project_ids else ""
     selected_geo = list(geo_map.keys())[0] if geo_map else ""
+    sort_by = "name"
+    sort_dir = "asc"
 
     if request.method == "POST":
         selected_project_id = request.form.get("project_id", "")
         selected_geo = request.form.get("geo", "")
+        sort_by = request.form.get("sort_by", "name")
+        sort_dir = request.form.get("sort_dir", "asc")
         if not selected_project_id or not selected_geo:
             error = "Please select a project and a location."
         else:
-            # Show loading message before fetching VMs
             loading = True
-            # Fetch VMs for selected project and geo (all zones under geo)
             try:
                 zones = geo_map.get(selected_geo, [])
                 zones_param = ",".join(zones)
@@ -250,6 +269,9 @@ def vms():
                 resp.raise_for_status()
                 data = resp.json()
                 vms = data.get("vms", [])
+                # Sort the VMs by the selected column and direction
+                reverse = sort_dir == "desc"
+                vms = sorted(vms, key=lambda vm: str(vm.get(sort_by, "")), reverse=reverse)
                 loading = False
             except Exception as e:
                 error = f"Error fetching VMs: {e}"
@@ -263,7 +285,9 @@ def vms():
         error=error,
         selected_project_id=selected_project_id,
         selected_geo=selected_geo,
-        loading=loading
+        loading=loading,
+        sort_by=sort_by,
+        sort_dir=sort_dir
     )
 
 if __name__ == "__main__":
