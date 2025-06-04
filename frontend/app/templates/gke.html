@@ -50,41 +50,104 @@
             color: #27ae60;
             font-weight: bold;
         }
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0; top: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.4);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: #fff;
+            border-radius: 8px;
+            padding: 2rem;
+            min-width: 350px;
+            max-width: 400px;
+            box-shadow: 0 4px 24px #2222;
+            position: relative;
+        }
+        .modal-content label { display: block; margin-top: 1rem; }
+        .modal-content input[type="number"] { width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #ccc; }
+        .modal-content select { width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #ccc; }
+        .modal-content button { margin-top: 1.2rem; width: 100%; padding: 0.7rem; background: #2980b9; color: #fff; border: none; border-radius: 4px; font-size: 1rem; }
+        .modal-content .close { position: absolute; top: 0.7rem; right: 1rem; font-size: 1.5rem; color: #888; cursor: pointer; }
+        .modal-content .confirm { background: #27ae60; }
+        .modal-content .cancel { background: #c0392b; margin-top: 0.5rem; }
+        .modal-content .input-row { display: flex; gap: 1rem; }
+        .modal-content .input-row > div { flex: 1; }
     </style>
     <script>
         function showLoading() {
             document.getElementById('loading-msg').style.display = 'block';
         }
-        function setSort(field, currentSortBy, currentSortDir) {
-            var form = document.getElementById('gke-form');
-            var sortByInput = document.getElementById('sort_by');
-            var sortDirInput = document.getElementById('sort_dir');
-            if (sortByInput && sortDirInput) {
-                if (currentSortBy === field) {
-                    sortDirInput.value = currentSortDir === "asc" ? "desc" : "asc";
-                } else {
-                    sortByInput.value = field;
-                    sortDirInput.value = "asc";
-                }
-                showLoading();
-                form.submit();
-            }
+        function openResizeModal(clusterIndex) {
+            var modal = document.getElementById('resize-modal');
+            var cluster = window.gkeClusters[clusterIndex];
+            var nodePools = cluster.nodePools;
+            var nodePoolSelect = document.getElementById('resize-nodepool');
+            nodePoolSelect.innerHTML = "";
+            nodePools.forEach(function(np, idx) {
+                var opt = document.createElement('option');
+                opt.value = np.name;
+                opt.text = np.name;
+                nodePoolSelect.appendChild(opt);
+            });
+            // Set initial values for the first node pool
+            setResizeModalNodePoolFields(nodePools[0]);
+            nodePoolSelect.onchange = function() {
+                var selected = nodePools.find(np => np.name === nodePoolSelect.value);
+                setResizeModalNodePoolFields(selected);
+            };
+            document.getElementById('resize-modal-cluster').value = cluster.name;
+            document.getElementById('resize-modal-project').value = cluster.project_id || "";
+            document.getElementById('resize-modal-cluster-name').innerText = "Cluster: " + cluster.name;
+            document.getElementById('resize-modal').style.display = 'flex';
         }
-        function downloadCSV() {
-            var table = document.querySelector('.modern-table');
-            var rows = Array.from(table.querySelectorAll('tr'));
-            var csv = rows.map(row => {
-                return Array.from(row.querySelectorAll('th,td'))
-                    .map(cell => '"' + cell.textContent.replace(/"/g, '""') + '"')
-                    .join(',');
-            }).join('\n');
-            var blob = new Blob([csv], { type: 'text/csv' });
-            var link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'gke_report.csv';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+        function setResizeModalNodePoolFields(nodePool) {
+            document.getElementById('resize-autoscaling').checked = !!nodePool.autoscalingEnabled;
+            document.getElementById('resize-min-node').value = nodePool.minNodeCount || 0;
+            document.getElementById('resize-max-node').value = nodePool.maxNodeCount || 0;
+            document.getElementById('resize-static-node').value = nodePool.nodeCount || 0;
+            document.getElementById('resize-modal-machine-type').innerText = "Machine Type: " + (nodePool.machineType || "N/A");
+            updateResizeModalFields();
+        }
+        function closeResizeModal() {
+            document.getElementById('resize-modal').style.display = 'none';
+        }
+        function updateResizeModalFields() {
+            var autoscaling = document.getElementById('resize-autoscaling').checked;
+            document.getElementById('resize-min-node').parentElement.style.display = autoscaling ? 'block' : 'none';
+            document.getElementById('resize-max-node').parentElement.style.display = autoscaling ? 'block' : 'none';
+            document.getElementById('resize-static-node').parentElement.style.display = autoscaling ? 'none' : 'block';
+        }
+        function confirmResize() {
+            // Validation
+            var autoscaling = document.getElementById('resize-autoscaling').checked;
+            var minNode = parseInt(document.getElementById('resize-min-node').value, 10);
+            var maxNode = parseInt(document.getElementById('resize-max-node').value, 10);
+            var staticNode = parseInt(document.getElementById('resize-static-node').value, 10);
+            if (autoscaling) {
+                if (isNaN(minNode) || isNaN(maxNode) || minNode < 0 || maxNode < 0 || minNode > 10 || maxNode > 10) {
+                    alert("Min and Max node count must be integers between 0 and 10.");
+                    return;
+                }
+                if (minNode >= maxNode) {
+                    alert("Min node count must be less than Max node count.");
+                    return;
+                }
+            } else {
+                if (isNaN(staticNode) || staticNode < 0 || staticNode > 10) {
+                    alert("Node count must be an integer between 0 and 10.");
+                    return;
+                }
+            }
+            if (!confirm("Are you sure you want to resize this node pool?")) return;
+            // TODO: Make API call to backend to resize node pool
+            closeResizeModal();
+            alert("Resize request sent (not yet implemented).");
         }
     </script>
 </head>
@@ -129,30 +192,34 @@
         {% endif %}
         <table class="modern-table">
             <tr>
-                <th class="sortable" onclick="setSort('name', '{{ sort_by }}', '{{ sort_dir }}')">Name{% if sort_by == 'name' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
-                <th class="sortable" onclick="setSort('location', '{{ sort_by }}', '{{ sort_dir }}')">Location{% if sort_by == 'location' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
-                <th class="sortable" onclick="setSort('status', '{{ sort_by }}', '{{ sort_dir }}')">Status{% if sort_by == 'status' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
-                <th class="sortable" onclick="setSort('clustertype', '{{ sort_by }}', '{{ sort_dir }}')">Cluster Type{% if sort_by == 'clustertype' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
-                <th class="sortable" onclick="setSort('nodePools', '{{ sort_by }}', '{{ sort_dir }}')">Node Pools{% if sort_by == 'nodePools' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
-                <th class="sortable" onclick="setSort('nodePoolsMachineType', '{{ sort_by }}', '{{ sort_dir }}')">Node Pools Machine Type{% if sort_by == 'nodePoolsMachineType' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
-                <th class="sortable" onclick="setSort('isPublicCluster', '{{ sort_by }}', '{{ sort_dir }}')">Is Public Cluster?{% if sort_by == 'isPublicCluster' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
-                <th class="sortable" onclick="setSort('autoscalingStatus', '{{ sort_by }}', '{{ sort_dir }}')">Autoscaling Status{% if sort_by == 'autoscalingStatus' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
-                <th class="sortable" onclick="setSort('minNodeCount', '{{ sort_by }}', '{{ sort_dir }}')">Min Node Count{% if sort_by == 'minNodeCount' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
-                <th class="sortable" onclick="setSort('maxNodeCount', '{{ sort_by }}', '{{ sort_dir }}')">Max Node Count{% if sort_by == 'maxNodeCount' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
-                <th class="sortable" onclick="setSort('endpoint', '{{ sort_by }}', '{{ sort_dir }}')">Endpoint{% if sort_by == 'endpoint' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
-                <th class="sortable" onclick="setSort('nodeCount', '{{ sort_by }}', '{{ sort_dir }}')">Node Count{% if sort_by == 'nodeCount' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
-                <th class="sortable" onclick="setSort('nodeVersion', '{{ sort_by }}', '{{ sort_dir }}')">Node Version{% if sort_by == 'nodeVersion' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
-                <th class="sortable" onclick="setSort('masterVersion', '{{ sort_by }}', '{{ sort_dir }}')">Master Version{% if sort_by == 'masterVersion' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
-                <th class="sortable" onclick="setSort('network', '{{ sort_by }}', '{{ sort_dir }}')">Network{% if sort_by == 'network' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
-                <th class="sortable" onclick="setSort('subnetwork', '{{ sort_by }}', '{{ sort_dir }}')">Subnetwork{% if sort_by == 'subnetwork' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
-                <th class="sortable" onclick="setSort('labels', '{{ sort_by }}', '{{ sort_dir }}')">Labels{% if sort_by == 'labels' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
-                <th class="sortable" onclick="setSort('createTime', '{{ sort_by }}', '{{ sort_dir }}')">Creation Time{% if sort_by == 'createTime' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
+                <th>Name</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>Cluster Type</th>
+                <th>Node Pools</th>
+                <th>Node Pools Machine Type</th>
+                <th>Is Public Cluster?</th>
+                <th>Autoscaling Status</th>
+                <th>Min Node Count</th>
+                <th>Max Node Count</th>
+                <th>Endpoint</th>
+                <th>Node Count</th>
+                <th>Node Version</th>
+                <th>Master Version</th>
+                <th>Network</th>
+                <th>Subnetwork</th>
+                <th>Labels</th>
+                <th>Creation Time</th>
+                <th></th>
             </tr>
             {% if clusters|length == 0 %}
                 <tr>
-                    <td colspan="18" style="text-align:center; color:#888;">No GKE clusters found.</td>
+                    <td colspan="19" style="text-align:center; color:#888;">No GKE clusters found.</td>
                 </tr>
             {% else %}
+                <script>
+                    window.gkeClusters = {{ clusters|tojson }};
+                </script>
                 {% for cluster in clusters %}
                     <tr class="{% if (cluster.status and (cluster.status|lower == 'stopped' or cluster.status|lower == 'suspended')) or (cluster.nodeCount|string == '0') %}non-running{% endif %}">
                         <td>{{ cluster.name }}</td>
@@ -180,10 +247,45 @@
                         <td>{{ cluster.subnetwork }}</td>
                         <td>{{ cluster.labels }}</td>
                         <td>{{ cluster.createTime }}</td>
+                        <td>
+                            {% if cluster.clustertype == "Standard" %}
+                                <button type="button" onclick="openResizeModal({{ loop.index0 }})" style="padding: 0.3rem 0.9rem; background: #34495e; color: #fff; border: none; border-radius: 4px; font-size: 0.95rem; cursor: pointer;">Resize</button>
+                            {% endif %}
+                        </td>
                     </tr>
                 {% endfor %}
             {% endif %}
         </table>
+        <!-- Resize Modal (structure only, JS logic to be implemented) -->
+        <div id="resize-modal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <span class="close" onclick="closeResizeModal()">&times;</span>
+                <h3>Resize Node Pool</h3>
+                <div id="resize-modal-cluster-name" style="font-weight: bold; color: #2c3e50; margin-bottom: 0.7rem;"></div>
+                <form id="resize-form">
+                    <input type="hidden" id="resize-modal-cluster" name="cluster_name">
+                    <input type="hidden" id="resize-modal-project" name="project_id">
+                    <label for="resize-nodepool">Node Pool:</label>
+                    <select id="resize-nodepool" name="nodepool"></select>
+                    <div id="resize-modal-machine-type" style="margin-top: 0.7rem; font-size: 1rem; color: #34495e;"></div>
+                    <label><input type="checkbox" id="resize-autoscaling" name="autoscaling" onchange="updateResizeModalFields()"> Autoscaling enabled?</label>
+                    <div id="resize-min-node-div">
+                        <label for="resize-min-node">Min Node:</label>
+                        <input type="number" id="resize-min-node" name="min_node" min="0" max="10" required>
+                    </div>
+                    <div id="resize-max-node-div">
+                        <label for="resize-max-node">Max Node:</label>
+                        <input type="number" id="resize-max-node" name="max_node" min="0" max="10" required>
+                    </div>
+                    <div id="resize-static-node-div">
+                        <label for="resize-static-node">Node Count:</label>
+                        <input type="number" id="resize-static-node" name="node_count" min="0" max="10" required>
+                    </div>
+                    <button type="button" class="confirm" onclick="confirmResize()">Resize</button>
+                    <button type="button" class="cancel" onclick="closeResizeModal()">Cancel</button>
+                </form>
+            </div>
+        </div>
     {% endif %}
 </body>
 </html>

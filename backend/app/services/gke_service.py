@@ -33,10 +33,16 @@ class GKEService:
                         machine_type = np.get("config", {}).get("machineType", "")
                         autoscaling = np.get("autoscaling", {})
                         autoscaling_enabled = autoscaling.get("enabled", False)
+                        min_node = autoscaling.get("minNodeCount", 0) if autoscaling_enabled else 0
+                        max_node = autoscaling.get("maxNodeCount", 0) if autoscaling_enabled else 0
+                        node_count = np.get("initialNodeCount", 0) if not autoscaling_enabled else 0
                         node_pool_objs.append({
                             "name": name,
                             "machineType": machine_type,
                             "autoscalingEnabled": autoscaling_enabled,
+                            "minNodeCount": min_node,
+                            "maxNodeCount": max_node,
+                            "nodeCount": node_count,
                         })
                     node_pool_names = [np["name"] for np in node_pool_objs]
                     node_pool_machine_types = [np["machineType"] for np in node_pool_objs]
