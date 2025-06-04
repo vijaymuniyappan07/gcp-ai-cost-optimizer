@@ -110,7 +110,16 @@ def vms():
                 data = resp.json()
                 vms = data.get("vms", [])
                 reverse = sort_dir == "desc"
-                vms = sorted(vms, key=lambda vm: str(vm.get(sort_by, "")), reverse=reverse)
+                numeric_fields = {"daysStarted", "daysStopped"}
+                def sort_key(vm):
+                    val = vm.get(sort_by, "")
+                    if sort_by in numeric_fields:
+                        try:
+                            return int(val)
+                        except Exception:
+                            return float('inf') if reverse else float('-inf')
+                    return str(val)
+                vms = sorted(vms, key=sort_key, reverse=reverse)
                 total_vms = len(vms)
                 total_pages = max(1, (total_vms + page_size - 1) // page_size)
                 start = (page - 1) * page_size

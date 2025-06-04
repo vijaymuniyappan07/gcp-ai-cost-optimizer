@@ -26,13 +26,14 @@ This list prioritizes visual feedback and parallel backend/frontend progress.
 
 ## 3. VMs: Backend + Frontend
 
-- **Backend:**
+- **[COMPLETED] Backend:**
   - Implement real GCP VM data fetching in `gcp_client.py` and wire to `/resources/vms`.
   - Test: Endpoint returns real (or mocked) VM data.
 
-- **Frontend:**
+- **[COMPLETED] Frontend:**
   - Update `ResourceSummary` (or a dedicated VMs page) to fetch and display VM data from backend.
   - Add loading/error states for VM data.
+  - Add sorting, pagination, and CSV download for all columns.
   - Test: UI shows live VM data.
 
 ---
