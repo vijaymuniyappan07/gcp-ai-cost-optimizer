@@ -73,27 +73,27 @@ This document contains a granular, step-by-step plan to build the MVP for the GC
 
 ## 5. Cost Analysis & AI Recommendation
 
-14. **Implement cost analysis service (stub)**
+14. **[COMPLETED] Implement cost analysis service (stub)**
     - Start: No cost analysis logic.
     - End: `backend/app/services/cost_analysis.py` with a function stub.
 
-15. **Write and pass test for cost analysis service**
+15. **[COMPLETED] Write and pass test for cost analysis service**
     - Start: No test for cost analysis.
     - End: Test that calls the stub and checks output.
 
-16. **Implement AI service (stub)**
+16. **[COMPLETED] Implement AI service (stub)**
     - Start: No AI service.
     - End: `backend/app/services/ai_service.py` with a function stub.
 
-17. **Write and pass test for AI service**
+17. **[COMPLETED] Write and pass test for AI service**
     - Start: No test for AI service.
     - End: Test that calls the stub and checks output.
 
-18. **Implement `/recommendations` endpoint (stub)**
+18. **[COMPLETED] Implement `/recommendations` endpoint (stub)**
     - Start: No recommendations endpoint.
     - End: `backend/app/api/recommendations.py` with a POST endpoint returning mock recommendations.
 
-19. **Write and pass test for `/recommendations` endpoint**
+19. **[COMPLETED] Write and pass test for `/recommendations` endpoint**
     - Start: No test for recommendations endpoint.
     - End: Test that posts sample data and checks response.
 
@@ -101,15 +101,15 @@ This document contains a granular, step-by-step plan to build the MVP for the GC
 
 ## 6. Frontend Foundation
 
-20. **Scaffold frontend app (Flask/FastAPI/Streamlit)**
+20. **[COMPLETED] Scaffold frontend app (Flask/FastAPI/Streamlit)**
     - Start: No frontend code.
     - End: `frontend/app/main.py` with a minimal app and root route.
 
-21. **Write and pass test for frontend root route**
+21. **[COMPLETED] Write and pass test for frontend root route**
     - Start: No test for frontend.
     - End: `frontend/tests/test_frontend.py` with a test for the root route.
 
-22. **Set up frontend folder structure**
+22. **[COMPLETED] Set up frontend folder structure**
     - Start: Only `main.py` exists.
     - End: `templates/`, `static/`, `components/`, `utils/` subfolders with placeholder files.
 
@@ -117,42 +117,42 @@ This document contains a granular, step-by-step plan to build the MVP for the GC
 
 ## 7. Frontend UI Components (Stubs)
 
-23. **Create dashboard component (stub)**
+23. **[COMPLETED] Create dashboard component (stub)**
     - Start: No dashboard.
     - End: `frontend/app/components/dashboard.py` with a stub class/function.
 
-24. **Write and pass test for dashboard component**
+24. **[COMPLETED] Write and pass test for dashboard component**
     - Start: No test for dashboard.
     - End: Test that imports and instantiates the dashboard.
 
-25. **Repeat for resource summary, recommendation list, action panel, cost trends chart**
+25. **[COMPLETED] Repeat for resource summary, recommendation list, action panel, cost trends chart**
     - Each: Create stub and test for each component.
 
 ---
 
 ## 8. Dockerization
 
-26. **Create Dockerfile for backend**
+26. **[COMPLETED] Create Dockerfile for backend**
     - Start: No Dockerfile.
     - End: `Dockerfile` builds backend app.
 
-27. **Write and pass test: build and run backend container**
+27. **[COMPLETED] Write and pass test: build and run backend container**
     - Start: No test for Docker build.
     - End: Backend container builds and health check passes.
 
-28. **Create Dockerfile for frontend (if separate)**
+28. **[COMPLETED] Create Dockerfile for frontend (if separate)**
     - Start: No frontend Dockerfile.
     - End: Dockerfile builds frontend app.
 
-29. **Write and pass test: build and run frontend container**
+29. **[COMPLETED] Write and pass test: build and run frontend container**
     - Start: No test for frontend Docker build.
     - End: Frontend container builds and root route passes.
 
-30. **Create docker-compose.yml**
+30. **[COMPLETED] Create docker-compose.yml**
     - Start: No compose file.
     - End: `docker-compose.yml` runs backend, frontend, and (optional) db.
 
-31. **Write and pass test: docker-compose up brings up all services**
+31. **[COMPLETED] Write and pass test: docker-compose up brings up all services**
     - Start: No integration test.
     - End: All containers start and health checks pass.
 
@@ -160,11 +160,11 @@ This document contains a granular, step-by-step plan to build the MVP for the GC
 
 ## 9. Documentation & Linting
 
-32. **Add and test README.md**
+32. **[COMPLETED] Add and test README.md**
     - Start: No README.
     - End: `README.md` with setup and usage instructions.
 
-33. **Set up and test linting/formatting**
+33. **[COMPLETED] Set up and test linting/formatting**
     - Start: No linting.
     - End: `flake8`, `black`, and `isort` configs; test that code passes linting.
 

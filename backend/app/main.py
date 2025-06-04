@@ -9,10 +9,12 @@ if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
 from api import gcp_resources
+from api import recommendations
 
 app = FastAPI()
 
 app.include_router(gcp_resources.router)
+app.include_router(recommendations.router)
 
 @app.get("/health")
 def health_check():

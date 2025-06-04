@@ -12,3 +12,4 @@ flake8==7.0.0
 isort==5.13.2
 python-dotenv==1.0.1
 requests==2.32.2
+uvicorn==0.29.0
