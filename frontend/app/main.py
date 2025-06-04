@@ -56,6 +56,8 @@ def gke():
     clusters = None
     project_ids = []
     selected_project_id = ""
+    sort_by = request.form.get("sort_by") or request.args.get("sort_by") or "name"
+    sort_dir = request.form.get("sort_dir") or request.args.get("sort_dir") or "asc"
     try:
         # Fetch project ids for the dropdown
         resp = requests.get(f"{BACKEND_API_URL}/gcp/options", timeout=10)
@@ -66,20 +68,34 @@ def gke():
     except Exception as e:
         error = f"Error fetching project ids: {e}"
         loading = False
-        return render_template("gke.html", clusters=None, error=error, loading=loading, project_ids=[], selected_project_id=None)
+        return render_template("gke.html", clusters=None, error=error, loading=loading, project_ids=[], selected_project_id=None, sort_by=sort_by, sort_dir=sort_dir)
 
     if request.method == "POST":
         selected_project_id = request.form.get("project_id", "") or selected_project_id
+        sort_by = request.form.get("sort_by", "name")
+        sort_dir = request.form.get("sort_dir", "asc")
     try:
         resp = requests.get(f"{BACKEND_API_URL}/resources/gke", params={"project_id": selected_project_id}, timeout=30)
         resp.raise_for_status()
         data = resp.json()
         clusters = data.get("gke", [])
+        # Sorting logic
+        reverse = sort_dir == "desc"
+        numeric_fields = {"nodeCount", "minNodeCount", "maxNodeCount"}
+        def sort_key(cluster):
+            val = cluster.get(sort_by, "")
+            if sort_by in numeric_fields:
+                try:
+                    return int(str(val).split(",")[0].strip())
+                except Exception:
+                    return float('inf') if reverse else float('-inf')
+            return str(val)
+        clusters = sorted(clusters, key=sort_key, reverse=reverse)
         loading = False
     except Exception as e:
         error = f"Error fetching GKE clusters: {e}"
         loading = False
-    return render_template("gke.html", clusters=clusters, error=error, loading=loading, project_ids=project_ids, selected_project_id=selected_project_id)
+    return render_template("gke.html", clusters=clusters, error=error, loading=loading, project_ids=project_ids, selected_project_id=selected_project_id, sort_by=sort_by, sort_dir=sort_dir)
 
 @app.route("/cloudsql", methods=["GET", "POST"])
 def cloudsql():

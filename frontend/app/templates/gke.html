@@ -55,19 +55,52 @@
         function showLoading() {
             document.getElementById('loading-msg').style.display = 'block';
         }
+        function setSort(field, currentSortBy, currentSortDir) {
+            var form = document.getElementById('gke-form');
+            var sortByInput = document.getElementById('sort_by');
+            var sortDirInput = document.getElementById('sort_dir');
+            if (sortByInput && sortDirInput) {
+                if (currentSortBy === field) {
+                    sortDirInput.value = currentSortDir === "asc" ? "desc" : "asc";
+                } else {
+                    sortByInput.value = field;
+                    sortDirInput.value = "asc";
+                }
+                showLoading();
+                form.submit();
+            }
+        }
+        function downloadCSV() {
+            var table = document.querySelector('.modern-table');
+            var rows = Array.from(table.querySelectorAll('tr'));
+            var csv = rows.map(row => {
+                return Array.from(row.querySelectorAll('th,td'))
+                    .map(cell => '"' + cell.textContent.replace(/"/g, '""') + '"')
+                    .join(',');
+            }).join('\n');
+            var blob = new Blob([csv], { type: 'text/csv' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'gke_report.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     </script>
 </head>
 <body>
     <a href="{{ url_for('index') }}">&#8592; Back to Home</a>
     <h2>GKE Clusters</h2>
-    <form method="post" action="{{ url_for('gke') }}" id="gke-form" style="max-width: 350px; margin: 2rem auto 2rem auto; display: flex; flex-direction: column; gap: 1.2rem;" onsubmit="showLoading()">
+    <form method="post" action="{{ url_for('gke') }}" id="gke-form" style="max-width: 350px; margin-bottom: 2rem;" onsubmit="showLoading()">
         <label for="project_id">Project ID:</label>
-        <select name="project_id" id="project_id" required style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #ccc;">
+        <select name="project_id" id="project_id" required>
             {% for pid in project_ids %}
                 <option value="{{ pid }}" {% if pid == selected_project_id %}selected{% endif %}>{{ pid }}</option>
             {% endfor %}
         </select>
-        <button type="submit" style="width: 100%; padding: 0.7rem; background: #2980b9; color: #fff; border: none; border-radius: 4px; font-size: 1rem;">Fetch GKE Clusters</button>
+        <input type="hidden" name="sort_by" id="sort_by" value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir" id="sort_dir" value="{{ sort_dir }}">
+        <button type="submit">Fetch GKE Clusters</button>
     </form>
     <div id="loading-msg" class="loading" style="display:none;">
         <svg width="40" height="40" viewBox="0 0 40 40" style="vertical-align:middle;">
@@ -91,26 +124,29 @@
         <div class="error">{{ error }}</div>
     {% endif %}
     {% if clusters is not none %}
+        {% if clusters|length > 0 %}
+            <button type="button" onclick="downloadCSV()" style="margin-bottom: 1rem; padding: 0.4rem 1.2rem; background: #2980b9; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer;">Download CSV</button>
+        {% endif %}
         <table class="modern-table">
             <tr>
-                <th>Name</th>
-                <th>Location</th>
-                <th>Status</th>
-                <th>Cluster Type</th>
-                <th>Node Pools</th>
-                <th>Node Pools Machine Type</th>
-                <th>Is Public Cluster?</th>
-                <th>Autoscaling Status</th>
-                <th>Min Node Count</th>
-                <th>Max Node Count</th>
-                <th>Endpoint</th>
-                <th>Node Count</th>
-                <th>Node Version</th>
-                <th>Master Version</th>
-                <th>Network</th>
-                <th>Subnetwork</th>
-                <th>Labels</th>
-                <th>Creation Time</th>
+                <th class="sortable" onclick="setSort('name', '{{ sort_by }}', '{{ sort_dir }}')">Name{% if sort_by == 'name' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
+                <th class="sortable" onclick="setSort('location', '{{ sort_by }}', '{{ sort_dir }}')">Location{% if sort_by == 'location' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
+                <th class="sortable" onclick="setSort('status', '{{ sort_by }}', '{{ sort_dir }}')">Status{% if sort_by == 'status' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
+                <th class="sortable" onclick="setSort('clustertype', '{{ sort_by }}', '{{ sort_dir }}')">Cluster Type{% if sort_by == 'clustertype' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
+                <th class="sortable" onclick="setSort('nodePools', '{{ sort_by }}', '{{ sort_dir }}')">Node Pools{% if sort_by == 'nodePools' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
+                <th class="sortable" onclick="setSort('nodePoolsMachineType', '{{ sort_by }}', '{{ sort_dir }}')">Node Pools Machine Type{% if sort_by == 'nodePoolsMachineType' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
+                <th class="sortable" onclick="setSort('isPublicCluster', '{{ sort_by }}', '{{ sort_dir }}')">Is Public Cluster?{% if sort_by == 'isPublicCluster' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
+                <th class="sortable" onclick="setSort('autoscalingStatus', '{{ sort_by }}', '{{ sort_dir }}')">Autoscaling Status{% if sort_by == 'autoscalingStatus' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
+                <th class="sortable" onclick="setSort('minNodeCount', '{{ sort_by }}', '{{ sort_dir }}')">Min Node Count{% if sort_by == 'minNodeCount' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
+                <th class="sortable" onclick="setSort('maxNodeCount', '{{ sort_by }}', '{{ sort_dir }}')">Max Node Count{% if sort_by == 'maxNodeCount' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
+                <th class="sortable" onclick="setSort('endpoint', '{{ sort_by }}', '{{ sort_dir }}')">Endpoint{% if sort_by == 'endpoint' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
+                <th class="sortable" onclick="setSort('nodeCount', '{{ sort_by }}', '{{ sort_dir }}')">Node Count{% if sort_by == 'nodeCount' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
+                <th class="sortable" onclick="setSort('nodeVersion', '{{ sort_by }}', '{{ sort_dir }}')">Node Version{% if sort_by == 'nodeVersion' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
+                <th class="sortable" onclick="setSort('masterVersion', '{{ sort_by }}', '{{ sort_dir }}')">Master Version{% if sort_by == 'masterVersion' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
+                <th class="sortable" onclick="setSort('network', '{{ sort_by }}', '{{ sort_dir }}')">Network{% if sort_by == 'network' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
+                <th class="sortable" onclick="setSort('subnetwork', '{{ sort_by }}', '{{ sort_dir }}')">Subnetwork{% if sort_by == 'subnetwork' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
+                <th class="sortable" onclick="setSort('labels', '{{ sort_by }}', '{{ sort_dir }}')">Labels{% if sort_by == 'labels' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
+                <th class="sortable" onclick="setSort('createTime', '{{ sort_by }}', '{{ sort_dir }}')">Creation Time{% if sort_by == 'createTime' %}{% if sort_dir == 'asc' %} &#9650;{% else %} &#9660;{% endif %}{% endif %}</th>
             </tr>
             {% if clusters|length == 0 %}
                 <tr>
