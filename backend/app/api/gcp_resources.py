@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
 from app.services.gcp_client import GCPClient
 from app.services.vm_service import VMService
+from app.services.cloudsql_service import CloudSQLService
+from app.services.gke_service import GKEService
 import traceback
 
 print("[DEBUG] Loading gcp_resources router")
@@ -115,3 +117,37 @@ def get_storage():
             {"id": "bucket-2", "name": "test-bucket-2", "location": "EU"}
         ]
     }
+
+
+@router.post("/resources/gke/resize")
+async def resize_gke_nodepool(request: Request):
+    """
+    Resize a GKE node pool (autoscaling or static) for a given cluster.
+    """
+    try:
+        data = await request.json()
+        project_id = data.get("project_id")
+        cluster_name = data.get("cluster_name")
+        nodepool_name = data.get("nodepool_name")
+        autoscaling = data.get("autoscaling")
+        min_node = data.get("min_node")
+        max_node = data.get("max_node")
+        node_count = data.get("node_count")
+        location = data.get("location")  # Should be passed from frontend
+
+        gke_service = GKEService(project_id=project_id)
+        result = gke_service.resize_nodepool(
+            project_id=project_id,
+            location=location,
+            cluster_name=cluster_name,
+            nodepool_name=nodepool_name,
+            autoscaling=autoscaling,
+            min_node=min_node,
+            max_node=max_node,
+            node_count=node_count
+        )
+        return JSONResponse(content=result)
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"[ERROR] /resources/gke/resize exception: {e}\n{tb}")
+        return JSONResponse(content={"success": False, "error": str(e), "traceback": tb}, status_code=500)

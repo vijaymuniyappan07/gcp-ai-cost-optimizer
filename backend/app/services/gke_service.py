@@ -93,3 +93,51 @@ class GKEService:
         except Exception as e:
             print(f"Error listing GKE clusters: {e}")
             return []
+    def resize_nodepool(self, project_id, location, cluster_name, nodepool_name, autoscaling, min_node, max_node, node_count):
+        """
+        Resize a GKE node pool (autoscaling or static) for a given cluster.
+        """
+        try:
+            service = build("container", "v1")
+            parent = f"projects/{project_id}/locations/{location}/clusters/{cluster_name}/nodePools/{nodepool_name}"
+            # Fetch current node pool config
+            nodepool = service.projects().locations().clusters().nodePools().get(name=parent).execute()
+            current_autoscaling = nodepool.get("autoscaling", {}).get("enabled", False)
+            result = {}
+            if autoscaling:
+                # Enable autoscaling and set min/max node count
+                body = {
+                    "autoscaling": {
+                        "enabled": True,
+                        "minNodeCount": int(min_node),
+                        "maxNodeCount": int(max_node)
+                    }
+                }
+                op = service.projects().locations().clusters().nodePools().setAutoscaling(
+                    name=parent, body=body
+                ).execute()
+                result["autoscaling"] = op
+            else:
+                # If currently autoscaling, disable it first
+                if current_autoscaling:
+                    body = {
+                        "autoscaling": {
+                            "enabled": False
+                        }
+                    }
+                    op = service.projects().locations().clusters().nodePools().setAutoscaling(
+                        name=parent, body=body
+                    ).execute()
+                    result["disable_autoscaling"] = op
+                # Set static node count
+                body = {
+                    "nodeCount": int(node_count)
+                }
+                op = service.projects().locations().clusters().nodePools().setSize(
+                    name=parent, body=body
+                ).execute()
+                result["set_size"] = op
+            return {"success": True, "result": result}
+        except Exception as e:
+            print(f"Error resizing GKE node pool: {e}")
+            return {"success": False, "error": str(e)}
