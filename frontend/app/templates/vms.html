@@ -128,21 +128,25 @@
 <body>
     <a href="{{ url_for('index') }}">&#8592; Back to Home</a>
     <h2>VMs (Compute Engine)</h2>
-    <form method="post" action="{{ url_for('vms') }}" onsubmit="showLoading()" id="vm-form" style="display: flex; flex-wrap: wrap; align-items: center; gap: 1.2rem;">
-        <label for="project_id">Project ID:</label>
-        <select name="project_id" id="project_id" required onchange="document.getElementById('page').value=1;">
+    <form method="post" action="{{ url_for('vms') }}" onsubmit="showLoading()" id="vm-form"
+        style="display: flex; flex-wrap: wrap; align-items: center; gap: 1.2rem; background: #f8fafd; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem 1.5rem; margin-bottom: 1.5rem; max-width: 900px;">
+        <label for="project_id" style="margin-bottom:0; font-weight:500;">Project ID:</label>
+        <select name="project_id" id="project_id" required onchange="document.getElementById('page').value=1;"
+            style="padding: 0.4rem 0.7rem; border-radius: 4px; border: 1px solid #bbb; min-width: 160px;">
             {% for pid in project_ids %}
                 <option value="{{ pid }}" {% if pid == selected_project_id %}selected{% endif %}>{{ pid }}</option>
             {% endfor %}
         </select>
-        <label for="geo">Location:</label>
-        <select name="geo" id="geo" required onchange="document.getElementById('page').value=1;">
+        <label for="geo" style="margin-bottom:0; font-weight:500;">Location:</label>
+        <select name="geo" id="geo" required onchange="document.getElementById('page').value=1;"
+            style="padding: 0.4rem 0.7rem; border-radius: 4px; border: 1px solid #bbb; min-width: 120px;">
             {% for geo in geo_map.keys() %}
                 <option value="{{ geo }}" {% if geo == selected_geo %}selected{% endif %}>{{ geo }}</option>
             {% endfor %}
         </select>
-        <label for="page_size" style="margin-left: 1.2rem;">Rows per page:</label>
-        <select name="page_size" id="page_size" onchange="changePageSize()" style="padding: 0.2rem 0.5rem; font-size: 0.95rem; border-radius: 4px; border: 1px solid #bbb;">
+        <label for="page_size" style="margin-bottom:0; font-weight:500;">Rows per page:</label>
+        <select name="page_size" id="page_size" onchange="changePageSize()"
+            style="padding: 0.4rem 0.7rem; font-size: 0.95rem; border-radius: 4px; border: 1px solid #bbb; min-width: 80px;">
             {% for opt in pagination_options %}
                 <option value="{{ opt }}" {% if opt == page_size %}selected{% endif %}>{{ opt }}</option>
             {% endfor %}
@@ -150,7 +154,7 @@
         <input type="hidden" name="sort_by" id="sort_by" value="{{ sort_by }}">
         <input type="hidden" name="sort_dir" id="sort_dir" value="{{ sort_dir }}">
         <input type="hidden" name="page" id="page" value="{{ page }}">
-        <button type="submit">Fetch VMs</button>
+        <button type="submit" style="padding: 0.4rem 1.2rem; background: #2980b9; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer;">Fetch VMs</button>
     </form>
     <div id="loading-msg" class="loading" style="display:none;">
         <svg width="40" height="40" viewBox="0 0 40 40" style="vertical-align:middle;">
