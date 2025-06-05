@@ -35,25 +35,32 @@ class CloudSQLService:
             print(f"[gcloud exception] {e}")
             return ""
 
-    def list_cloudsql_instances(self, project_id=None):
+    def list_cloudsql_instances_gcloud(self, project_id=None):
         """
-        List all Cloud SQL instances in the given GCP project.
+        List all Cloud SQL instances using gcloud CLI for performance.
         Returns a list of instance details (dicts).
         """
+        import json
         project_id = project_id or self.project_id
         try:
-            service = build("sqladmin", "v1beta4")
-            request = service.instances().list(project=project_id)
-            response = request.execute()
+            cmd = [
+                "gcloud", "sql", "instances", "list",
+                "--project", project_id,
+                "--format=json"
+            ]
+            print(f"[DEBUG] Running: {' '.join(cmd)}")
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            if result.returncode != 0:
+                print(f"[gcloud error] {result.stderr}")
+                return []
+            instances_json = json.loads(result.stdout)
             instances = []
-            for instance in response.get("items", []):
+            for instance in instances_json:
                 settings = instance.get("settings", {})
                 instance_name = instance.get("name", "")
-                # Use gcloud CLI to get the real state
-                state = self.get_instance_state_gcloud(project_id, instance_name)
+                state = instance.get("state", "")
                 labels = settings.get("userLabels", {})
                 labels_str = ", ".join(f"{k}:{v}" for k, v in labels.items()) if labels else ""
-                # Extract VPC network name if available
                 vpc_network = ""
                 ip_config = settings.get("ipConfiguration", {})
                 if "privateNetwork" in ip_config:
@@ -78,7 +85,12 @@ class CloudSQLService:
                     "labels": labels_str,
                     "vpcNetwork": vpc_network,
                 })
+            print(f"[DEBUG] gcloud: fetched {len(instances)} Cloud SQL instances")
             return instances
         except Exception as e:
-            print(f"Error listing Cloud SQL instances: {e}")
+            print(f"[gcloud exception] {e}")
             return []
+
+    def list_cloudsql_instances(self, project_id=None):
+        # Use gcloud-based method for performance
+        return self.list_cloudsql_instances_gcloud(project_id=project_id)
