@@ -58,13 +58,16 @@ def get_vms(
     """
     Returns live VM data from GCP for the given project and zones.
     """
+    import traceback
     try:
         vm_service = VMService(project_id=project_id)
         selected_zones = [z.strip() for z in zones.split(",")] if zones else None
         vms = vm_service.list_vms(project_id=project_id, zones=selected_zones)
         return JSONResponse(content={"vms": vms})
     except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        tb = traceback.format_exc()
+        print(f"[ERROR] /resources/vms exception: {e}\n{tb}")
+        return JSONResponse(content={"error": f"{e}\n{tb}"}, status_code=500)
 
 from app.services.cloudsql_service import CloudSQLService
 

@@ -131,11 +131,16 @@ class StorageService:
                         done.add(future)
                 unfinished -= done
                 time.sleep(0.2)
-            # After timeout, do not wait for unfinished futures; just mark as timed out
+            # After timeout, cancel unfinished futures and mark as timed out
             print(f"[TRACE] Completed buckets: {len(completed_buckets)}, Timed out: {len(all_buckets) - len(completed_buckets)}")
-            for bucket in all_buckets:
+            for future in unfinished:
+                bucket = future_to_bucket[future]
                 if bucket.name not in completed_buckets:
-                    print(f"[WARN] Bucket {bucket.name} size could not be processed within timeout.")
+                    print(f"[WARN] Cancelling process for bucket {bucket.name} due to timeout.")
+                    try:
+                        future.cancel()
+                    except Exception as e:
+                        print(f"[ERROR] Could not cancel future for {bucket.name}: {e}")
                     buckets.append({
                         "name": bucket.name,
                         "location": bucket.location,

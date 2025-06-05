@@ -71,24 +71,29 @@ class VMService:
                     use_zones = all_zones
                 def fetch_zone(zone):
                     local_vms = []
+                    zone_start = time.time()
                     try:
                         request = compute_v1.ListInstancesRequest(project=project_id, zone=zone)
                         for instance in instances_client.list(request=request):
                             local_vms.append(self._instance_to_dict(instance))
+                        print(f"[DEBUG] Zone {zone}: fetched {len(local_vms)} VMs in {time.time() - zone_start:.2f}s")
                     except Exception as e:
                         print(f"[ERROR] Failed to fetch VMs in zone {zone}: {e}")
                     return local_vms
                 vms = []
+                overall_start = time.time()
                 with ThreadPoolExecutor(max_workers=min(self.max_workers, len(use_zones))) as executor:
                     future_to_zone = {executor.submit(fetch_zone, zone): zone for zone in use_zones}
                     for future in as_completed(future_to_zone):
+                        zone = future_to_zone[future]
                         try:
                             vms.extend(future.result())
                         except Exception as exc:
-                            print(f"[ERROR] Zone generated an exception: {exc}")
+                            print(f"[ERROR] Zone {zone} generated an exception: {exc}")
                         if time.time() - start_time > 60:
                             print("[ERROR] Timeout: listing VMs took too long.")
                             break
+                print(f"[DEBUG] /resources/vms: fetched {len(vms)} VMs from {len(use_zones)} zones in {time.time() - overall_start:.2f}s")
             return vms
         except DefaultCredentialsError:
             print("GCP credentials not found. Please set up authentication.")
