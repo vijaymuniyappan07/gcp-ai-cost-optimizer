@@ -85,13 +85,14 @@ This list prioritizes visual feedback and parallel backend/frontend progress.
 
 ## 7. Cloud Storage: Backend + Frontend
 
-- **Backend:**
+- **[COMPLETED] Backend:**
   - Implement Cloud Storage bucket data fetching in a dedicated service file and wire to `/resources/storage`.
   - Test: Endpoint returns real (or mocked) Storage data.
 
-- **Frontend:**
-  - Update `ResourceSummary` to display Storage data.
+- **[COMPLETED] Frontend:**
+  - Add a new route and template to display Storage data.
   - Add loading/error states for Storage.
+  - Add sorting, pagination, and CSV download for all columns.
   - Test: UI shows live Storage data.
 
 ---

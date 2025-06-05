@@ -31,19 +31,44 @@
             color: #2c3e50;
             font-weight: 600;
             border-top: 1px solid #bbb;
+            cursor: pointer;
+            user-select: none;
         }
         .modern-table tr:hover {
             background: #f0f4f8;
         }
-        .modern-table tr.non-running {
-            background: #23272f;
-            color: #fff;
+        .sort-arrow {
+            font-size: 0.9em;
+            margin-left: 0.2em;
         }
-        .modern-table tr.non-running td, .modern-table tr.non-running th {
-            color: #fff;
+        .pagination-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 1.5rem;
+            background: #f4f6fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
         }
-        .modern-table tr.non-running:hover {
-            background: #2d323c;
+        .pagination {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+        }
+        .pagination button, .pagination select {
+            margin-left: 0.5rem;
+            padding: 0.3rem 0.7rem;
+            border-radius: 4px;
+            border: 1px solid #bbb;
+            background: #f4f6fa;
+            color: #2c3e50;
+            cursor: pointer;
+        }
+        .pagination .current-page {
+            font-weight: bold;
+            margin-left: 0.5rem;
+            margin-right: 0.5rem;
         }
     </style>
     <script>
@@ -66,23 +91,141 @@
             link.click();
             document.body.removeChild(link);
         }
+        // Client-side sorting and pagination
+        let fsData = {{ filestore|tojson }};
+        let currentSort = { col: "name", dir: "asc" };
+        let page = 1;
+        let pageSize = 20;
+        function renderTable() {
+            const tableBody = document.getElementById('filestore-table-body');
+            tableBody.innerHTML = "";
+            const start = (page - 1) * pageSize;
+            const end = start + pageSize;
+            fsData.slice(start, end).forEach(fs => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${fs.name}</td>
+                    <td>${fs.location}</td>
+                    <td>${fs.tier}</td>
+                    <td>${fs.capacity}</td>
+                    <td>${fs.status}</td>
+                    <td>${fs.network}</td>
+                    <td>${fs.nfs_path}</td>
+                    <td>${fs.ip_address}</td>
+                    <td>${fs.protocol}</td>
+                    <td>${fs.label}</td>
+                    <td>${fs.createTime}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+            setTimeout(renderPagination, 0);
+        }
+        function parseDate(dateStr) {
+            if (!dateStr) return 0;
+            let d = Date.parse(dateStr);
+            return isNaN(d) ? 0 : d;
+        }
+        function sortTable(col) {
+            if (currentSort.col === col) {
+                currentSort.dir = currentSort.dir === "asc" ? "desc" : "asc";
+            } else {
+                currentSort.col = col;
+                currentSort.dir = "asc";
+            }
+            fsData.sort((a, b) => {
+                let va = a[col] || "";
+                let vb = b[col] || "";
+                if (col === "capacity") {
+                    va = parseFloat(va) || 0;
+                    vb = parseFloat(vb) || 0;
+                } else if (col === "createTime") {
+                    va = parseDate(va);
+                    vb = parseDate(vb);
+                }
+                if (va < vb) return currentSort.dir === "asc" ? -1 : 1;
+                if (va > vb) return currentSort.dir === "asc" ? 1 : -1;
+                return 0;
+            });
+            page = 1;
+            renderTable();
+            updateSortArrows();
+        }
+        function updateSortArrows() {
+            const ths = document.querySelectorAll('.modern-table th');
+            ths.forEach(th => {
+                th.querySelectorAll('.sort-arrow').forEach(e => e.remove());
+                if (th.dataset.col === currentSort.col) {
+                    const arrow = document.createElement('span');
+                    arrow.className = "sort-arrow";
+                    arrow.textContent = currentSort.dir === "asc" ? "▲" : "▼";
+                    th.appendChild(arrow);
+                }
+            });
+        }
+        function renderPagination() {
+            const total = fsData.length;
+            const totalPages = Math.max(1, Math.ceil(total / pageSize));
+            const paginationBar = document.getElementById('pagination-bar');
+            if (!paginationBar) return;
+            paginationBar.innerHTML = `
+                <div style="font-weight: bold; color: #2c3e50;">
+                    Total Filestore Instances: ${total}
+                </div>
+                <div class="pagination">
+                    <button type="button" onclick="goToPage(${page - 1})" ${page <= 1 ? "disabled" : ""}>Prev</button>
+                    <span style="font-size: 0.95rem;">Page ${page} of ${totalPages}</span>
+                    <button type="button" onclick="goToPage(${page + 1})" ${page >= totalPages ? "disabled" : ""}>Next</button>
+                    <label for="page-size-select" style="margin-left:1rem;">Rows per page:</label>
+                    <select id="page-size-select" onchange="changePageSize()">
+                        <option value="10" ${pageSize==10?"selected":""}>10</option>
+                        <option value="20" ${pageSize==20?"selected":""}>20</option>
+                        <option value="50" ${pageSize==50?"selected":""}>50</option>
+                        <option value="100" ${pageSize==100?"selected":""}>100</option>
+                        <option value="200" ${pageSize==200?"selected":""}>200</option>
+                        <option value="500" ${pageSize==500?"selected":""}>500</option>
+                    </select>
+                </div>
+            `;
+        }
+        function goToPage(p) {
+            const total = fsData.length;
+            const totalPages = Math.max(1, Math.ceil(total / pageSize));
+            if (p < 1 || p > totalPages) return;
+            page = p;
+            renderTable();
+            updateSortArrows();
+        }
+        function changePageSize() {
+            const sel = document.getElementById('page-size-select');
+            pageSize = parseInt(sel.value, 10) || 20;
+            page = 1;
+            renderTable();
+            updateSortArrows();
+        }
+        window.addEventListener("DOMContentLoaded", function() {
+            renderTable();
+            updateSortArrows();
+            document.querySelectorAll('.modern-table th[data-col]').forEach(th => {
+                th.addEventListener('click', () => sortTable(th.dataset.col));
+            });
+        });
     </script>
 </head>
 <body>
     <a href="{{ url_for('index') }}">&#8592; Back to Home</a>
     <h2>Filestore Instances</h2>
-    <form method="post" action="{{ url_for('filestore') }}" id="filestore-form" style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; background: #f8fafd; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem 1.5rem; margin-bottom: 1.5rem; max-width: 600px;" onsubmit="showLoading()">
+    <form method="post" action="{{ url_for('filestore') }}" id="filestore-form"
+        style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; background: #f8fafd; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem 1.5rem; margin-bottom: 1.5rem; max-width: 600px;"
+        onsubmit="showLoading()">
         <label for="project_id" style="margin-bottom:0; font-weight:500;">Project ID:</label>
         <select name="project_id" id="project_id" required style="padding: 0.4rem 0.7rem; border-radius: 4px; border: 1px solid #bbb; min-width: 160px;">
             {% for pid in project_ids %}
                 <option value="{{ pid }}" {% if pid == selected_project_id %}selected{% endif %}>{{ pid }}</option>
             {% endfor %}
         </select>
-        <input type="hidden" name="sort_by" id="sort_by" value="{{ sort_by if sort_by else 'name' }}">
-        <input type="hidden" name="sort_dir" id="sort_dir" value="{{ sort_dir if sort_dir else 'asc' }}">
         <button type="submit" style="padding: 0.4rem 1.2rem; background: #2980b9; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer;">Fetch Filestore Instances</button>
     </form>
-    <div id="loading-msg" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(255,255,255,0.7); align-items:center; justify-content:center; z-index:2000;">
+    <div id="loading-msg" class="loading" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(255,255,255,0.7); align-items:center; justify-content:center; z-index:2000;">
         <div style="text-align:center; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);">
             <svg width="48" height="48" viewBox="0 0 40 40" style="vertical-align:middle;">
                 <circle cx="20" cy="20" r="16" stroke="#2980b9" stroke-width="4" fill="none" stroke-dasharray="80" stroke-linecap="round">
@@ -103,58 +246,21 @@
         {% endif %}
         <table class="modern-table">
             <tr>
-                {% set sort_icon = {"asc": "▲", "desc": "▼"} %}
-                {% macro sort_th(label, field) -%}
-                    <th>
-                        <a href="#" onclick="
-                            document.getElementById('sort_by').value = '{{ field }}';
-                            document.getElementById('sort_dir').value = (
-                                document.getElementById('sort_by').value === '{{ field }}' && document.getElementById('sort_dir').value === 'asc'
-                            ) ? 'desc' : 'asc';
-                            document.getElementById('filestore-form').submit();
-                            return false;
-                        " style='color:inherit; text-decoration:none;'>
-                            {{ label }}
-                            {% if sort_by == field %}
-                                <span style="font-size:0.9em;">{{ sort_icon[sort_dir] }}</span>
-                            {% endif %}
-                        </a>
-                    </th>
-                {%- endmacro %}
-                {{ sort_th("Name", "name") }}
-                {{ sort_th("Location", "location") }}
-                {{ sort_th("Tier", "tier") }}
-                {{ sort_th("Capacity", "capacity") }}
-                {{ sort_th("Status", "status") }}
-                {{ sort_th("Network", "network") }}
-                {{ sort_th("NFS Path", "nfs_path") }}
-                {{ sort_th("IP Address", "ip_address") }}
-                {{ sort_th("Protocol", "protocol") }}
-                {{ sort_th("Label", "label") }}
-                {{ sort_th("Creation Time", "createTime") }}
+                <th data-col="name">Name</th>
+                <th data-col="location">Location</th>
+                <th data-col="tier">Tier</th>
+                <th data-col="capacity">Capacity</th>
+                <th data-col="status">Status</th>
+                <th data-col="network">Network</th>
+                <th data-col="nfs_path">NFS Path</th>
+                <th data-col="ip_address">IP Address</th>
+                <th data-col="protocol">Protocol</th>
+                <th data-col="label">Label</th>
+                <th data-col="createTime">Creation Time</th>
             </tr>
-            {% if filestore|length == 0 %}
-                <tr>
-                    <td colspan="11" style="text-align:center; color:#888;">No Filestore instances found.</td>
-                </tr>
-            {% else %}
-                {% for fs in filestore %}
-                    <tr>
-                        <td>{{ fs.name }}</td>
-                        <td>{{ fs.location }}</td>
-                        <td>{{ fs.tier }}</td>
-                        <td>{{ fs.capacity }}</td>
-                        <td>{{ fs.status }}</td>
-                        <td>{{ fs.network }}</td>
-                        <td>{{ fs.nfs_path }}</td>
-                        <td>{{ fs.ip_address }}</td>
-                        <td>{{ fs.protocol }}</td>
-                        <td>{{ fs.label }}</td>
-                        <td>{{ fs.createTime }}</td>
-                    </tr>
-                {% endfor %}
-            {% endif %}
+            <tbody id="filestore-table-body"></tbody>
         </table>
+        <div class="pagination-bar" id="pagination-bar"></div>
     {% endif %}
 </body>
 </html>
