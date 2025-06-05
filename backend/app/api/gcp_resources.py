@@ -115,11 +115,15 @@ def get_storage(project_id: str = Query(None, description="GCP project id")):
     """
     Returns real Cloud Storage bucket data for the given project.
     """
+    import time
     try:
+        print(f"[TRACE] get_storage: Start fetching buckets at {time.strftime('%Y-%m-%d %H:%M:%S')}")
         storage_service = StorageService(project_id=project_id)
         buckets = storage_service.list_buckets(project_id=project_id)
+        print(f"[TRACE] get_storage: Fetched {len(buckets)} buckets, sending response at {time.strftime('%Y-%m-%d %H:%M:%S')}")
         return {"storage": buckets}
     except Exception as e:
+        print(f"[TRACE] get_storage: Exception occurred at {time.strftime('%Y-%m-%d %H:%M:%S')}: {e}")
         return {"error": str(e)}
 
 
