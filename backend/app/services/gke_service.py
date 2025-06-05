@@ -1,0 +1,165 @@
+from googleapiclient.discovery import build
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class GKEService:
+    def __init__(self, project_id=None):
+        env_projects = os.getenv("GCP_PROJECT_ID", "")
+        self.project_ids = [p.strip() for p in env_projects.split(",") if p.strip()]
+        if not self.project_ids:
+            raise ValueError("GCP_PROJECT_ID environment variable is not set. Please add it to your .env file.")
+        self.project_id = project_id or self.project_ids[0]
+
+    def list_gke_clusters(self, project_id=None):
+        """
+        List all GKE clusters in the given GCP project.
+        Returns a list of cluster details (dicts).
+        """
+        project_id = project_id or self.project_id
+        try:
+            service = build("container", "v1")
+            clusters = []
+            try:
+                req = service.projects().locations().clusters().list(parent=f"projects/{project_id}/locations/-")
+                resp = req.execute()
+                for cluster in resp.get("clusters", []):
+                    # Node pools info
+                    node_pools = cluster.get("nodePools", [])
+                    node_pool_objs = []
+                    for np in node_pools:
+                        name = np.get("name", "")
+                        machine_type = np.get("config", {}).get("machineType", "")
+                        autoscaling = np.get("autoscaling", {})
+                        autoscaling_enabled = autoscaling.get("enabled", False)
+                        min_node = autoscaling.get("minNodeCount", 0) if autoscaling_enabled else 0
+                        max_node = autoscaling.get("maxNodeCount", 0) if autoscaling_enabled else 0
+                        node_count = np.get("initialNodeCount", 0) if not autoscaling_enabled else 0
+                        node_pool_objs.append({
+                            "name": name,
+                            "machineType": machine_type,
+                            "autoscalingEnabled": autoscaling_enabled,
+                            "minNodeCount": min_node,
+                            "maxNodeCount": max_node,
+                            "nodeCount": node_count,
+                        })
+                    node_pool_names = [np["name"] for np in node_pool_objs]
+                    node_pool_machine_types = [np["machineType"] for np in node_pool_objs]
+                    autoscaling_status = []
+                    min_node_count = []
+                    max_node_count = []
+                    for np in node_pools:
+                        autoscaling = np.get("autoscaling", {})
+                        if autoscaling:
+                            enabled = autoscaling.get("enabled", False)
+                            autoscaling_status.append("ENABLED" if enabled else "DISABLED")
+                            min_node_count.append(str(autoscaling.get("minNodeCount", 0) or 0))
+                            max_node_count.append(str(autoscaling.get("maxNodeCount", 0) or 0))
+                        else:
+                            autoscaling_status.append("DISABLED")
+                            min_node_count.append("0")
+                            max_node_count.append("0")
+                    clustertype = "Autopilot" if cluster.get("autopilot", {}).get("enabled") else "Standard"
+                    node_count = int(cluster.get("currentNodeCount", 0) or 0)
+                    status = cluster.get("status", "")
+                    if node_count == 0:
+                        status = "STOPPED"
+                    private_config = cluster.get("privateClusterConfig", {})
+                    is_public = not private_config.get("enablePrivateNodes", False)
+                    clusters.append({
+                        "name": cluster.get("name", ""),
+                        "location": cluster.get("location", ""),
+                        "status": status,
+                        "endpoint": cluster.get("endpoint", ""),
+                        "nodeCount": node_count,
+                        "nodeVersion": cluster.get("currentNodeVersion", ""),
+                        "masterVersion": cluster.get("currentMasterVersion", ""),
+                        "network": cluster.get("network", ""),
+                        "subnetwork": cluster.get("subnetwork", ""),
+                        "labels": ", ".join(f"{k}:{v}" for k, v in cluster.get("resourceLabels", {}).items()) if cluster.get("resourceLabels") else "",
+                        "createTime": cluster.get("createTime", ""),
+                        "clustertype": clustertype,
+                        "nodePools": node_pool_objs,
+                        "nodePoolsMachineType": ", ".join(node_pool_machine_types),
+                        "autoscalingStatus": ", ".join(autoscaling_status),
+                        "minNodeCount": ", ".join(min_node_count),
+                        "maxNodeCount": ", ".join(max_node_count),
+                        "isPublicCluster": "Yes" if is_public else "No",
+                    })
+            except Exception as e:
+                print(f"[GKE] Error fetching clusters: {e}")
+            return clusters
+        except Exception as e:
+            print(f"Error listing GKE clusters: {e}")
+            return []
+    def resize_nodepool(self, project_id, location, cluster_name, nodepool_name, autoscaling, min_node, max_node, node_count):
+        """
+        Resize a GKE node pool (autoscaling or static) for a given cluster.
+        """
+        try:
+            print(f"[DEBUG] Starting resize_nodepool: project_id={project_id}, location={location}, cluster_name={cluster_name}, nodepool_name={nodepool_name}, autoscaling={autoscaling}, min_node={min_node}, max_node={max_node}, node_count={node_count}", flush=True)
+            service = build("container", "v1")
+            parent = f"projects/{project_id}/locations/{location}/clusters/{cluster_name}/nodePools/{nodepool_name}"
+            # Fetch current node pool config
+            nodepool = service.projects().locations().clusters().nodePools().get(name=parent).execute()
+            print(f"[DEBUG] Current nodepool config: {nodepool}", flush=True)
+            current_autoscaling = nodepool.get("autoscaling", {}).get("enabled", False)
+            result = {}
+            if autoscaling:
+                print("[DEBUG] Enabling autoscaling...", flush=True)
+                # Enable autoscaling and set min/max node count
+                body = {
+                    "autoscaling": {
+                        "enabled": True,
+                        "minNodeCount": int(min_node),
+                        "maxNodeCount": int(max_node)
+                    }
+                }
+                op = service.projects().locations().clusters().nodePools().setAutoscaling(
+                    name=parent, body=body
+                ).execute()
+                print(f"[DEBUG] setAutoscaling response: {op}", flush=True)
+                result["autoscaling"] = op
+            else:
+                # If currently autoscaling, disable it first
+                if current_autoscaling:
+                    print("[DEBUG] Disabling autoscaling before setting static node count...", flush=True)
+                    body = {
+                        "autoscaling": {
+                            "enabled": False
+                        }
+                    }
+                    op = service.projects().locations().clusters().nodePools().setAutoscaling(
+                        name=parent, body=body
+                    ).execute()
+                    print(f"[DEBUG] disable_autoscaling response: {op}", flush=True)
+                    result["disable_autoscaling"] = op
+                    # Wait for the disable autoscaling operation to complete
+                    op_name = op.get("name")
+                    if op_name:
+                        from time import sleep
+                        for i in range(60):  # Wait up to 60 seconds
+                            op_status = service.projects().locations().operations().get(
+                                name=f"projects/{project_id}/locations/{location}/operations/{op_name}"
+                            ).execute()
+                            print(f"[DEBUG] Polling operation {op_name}: status={op_status.get('status')}", flush=True)
+                            if op_status.get("status") == "DONE":
+                                print(f"[DEBUG] Operation {op_name} completed.", flush=True)
+                                break
+                            sleep(2)
+                # Set static node count
+                print("[DEBUG] Setting static node count...", flush=True)
+                body = {
+                    "nodeCount": int(node_count)
+                }
+                op = service.projects().locations().clusters().nodePools().setSize(
+                    name=parent, body=body
+                ).execute()
+                print(f"[DEBUG] setSize response: {op}", flush=True)
+                result["set_size"] = op
+            print(f"[DEBUG] resize_nodepool result: {result}", flush=True)
+            return {"success": True, "result": result}
+        except Exception as e:
+            print(f"[ERROR] Error resizing GKE node pool: {e}", flush=True)
+            return {"success": False, "error": str(e)}

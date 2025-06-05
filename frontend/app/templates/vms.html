@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>VMs - GCP AI Cost Optimizer</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; }
+        h2 { color: #2c3e50; }
+        form { margin-bottom: 2rem; }
+        label { display: block; margin-top: 1rem; }
+        select, input[type=text] { width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #ccc; }
+        button { margin-top: 1.5rem; width: 100%; padding: 0.7rem; background: #2980b9; color: #fff; border: none; border-radius: 4px; font-size: 1rem; }
+        .error { color: #c0392b; margin-top: 1rem; }
+        .result { margin-top: 2rem; }
+        .loading { color: #2980b9; font-weight: bold; margin-top: 1rem; }
+        th.sortable { cursor: pointer; text-decoration: underline; }
+        .pagination { margin-top: 1.5rem; text-align: right; }
+        .pagination button, .pagination select { margin-left: 0.5rem; }
+        .pagination .current-page { font-weight: bold; }
+        .modern-table {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+            background: #fff;
+            box-shadow: 0 2px 8px #eee;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #bbb;
+        }
+        .modern-table th, .modern-table td {
+            padding: 0.7rem 1rem;
+            border-bottom: 1px solid #e0e0e0;
+            border-right: 1px solid #e0e0e0;
+            text-align: left;
+        }
+        .modern-table th:last-child, .modern-table td:last-child {
+            border-right: none;
+        }
+        .modern-table th {
+            background: #f4f6fa;
+            color: #2c3e50;
+            font-weight: 600;
+            border-top: 1px solid #bbb;
+        }
+        .modern-table tr:hover {
+            background: #f0f4f8;
+        }
+        .modern-table tr.non-running {
+            background: #23272f;
+            color: #fff;
+        }
+        .modern-table tr.non-running td, .modern-table tr.non-running th {
+            color: #fff;
+        }
+        .modern-table tr.non-running:hover {
+            background: #2d323c;
+        }
+        .pagination {
+            margin-top: 1.5rem;
+            text-align: right;
+        }
+        .pagination button, .pagination select {
+            margin-left: 0.5rem;
+            padding: 0.3rem 0.7rem;
+            border-radius: 4px;
+            border: 1px solid #bbb;
+            background: #f4f6fa;
+            color: #2c3e50;
+            cursor: pointer;
+        }
+        .pagination .current-page {
+            font-weight: bold;
+            margin-left: 0.5rem;
+            margin-right: 0.5rem;
+        }
+    </style>
+    <script>
+        function showLoading() {
+            document.getElementById('loading-msg').style.display = 'block';
+        }
+        function setSort(field, currentSortBy, currentSortDir) {
+            var form = document.getElementById('vm-form');
+            var sortByInput = document.getElementById('sort_by');
+            var sortDirInput = document.getElementById('sort_dir');
+            if (sortByInput && sortDirInput) {
+                if (currentSortBy === field) {
+                    sortDirInput.value = currentSortDir === "asc" ? "desc" : "asc";
+                } else {
+                    sortByInput.value = field;
+                    sortDirInput.value = "asc";
+                }
+                showLoading();
+                form.submit();
+            }
+        }
+        function goToPage(page) {
+            var form = document.getElementById('vm-form');
+            var pageInput = document.getElementById('page');
+            pageInput.value = page;
+            showLoading();
+            form.submit();
+        }
+        function changePageSize() {
+            var form = document.getElementById('vm-form');
+            var pageInput = document.getElementById('page');
+            pageInput.value = 1;
+            showLoading();
+            form.submit();
+        }
+        function downloadCSV() {
+            var table = document.querySelector('.modern-table');
+            var rows = Array.from(table.querySelectorAll('tr'));
+            var csv = rows.map(row => {
+                return Array.from(row.querySelectorAll('th,td'))
+                    .map(cell => '"' + cell.textContent.replace(/"/g, '""') + '"')
+                    .join(',');
+            }).join('\n');
+            var blob = new Blob([csv], { type: 'text/csv' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'vms_report.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</head>
+<body>
+    <a href="{{ url_for('index') }}">&#8592; Back to Home</a>
+    <h2>VMs (Compute Engine)</h2>
+    <form method="post" action="{{ url_for('vms') }}" onsubmit="showLoading()" id="vm-form"
+        style="display: flex; flex-wrap: wrap; align-items: center; gap: 1.2rem; background: #f8fafd; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem 1.5rem; margin-bottom: 1.5rem; max-width: 900px;">
+        <label for="project_id" style="margin-bottom:0; font-weight:500;">Project ID:</label>
+        <select name="project_id" id="project_id" required onchange="document.getElementById('page').value=1;"
+            style="padding: 0.4rem 0.7rem; border-radius: 4px; border: 1px solid #bbb; min-width: 160px;">
+            {% for pid in project_ids %}
+                <option value="{{ pid }}" {% if pid == selected_project_id %}selected{% endif %}>{{ pid }}</option>
+            {% endfor %}
+        </select>
+        <label for="geo" style="margin-bottom:0; font-weight:500;">Location:</label>
+        <select name="geo" id="geo" required onchange="document.getElementById('page').value=1;"
+            style="padding: 0.4rem 0.7rem; border-radius: 4px; border: 1px solid #bbb; min-width: 120px;">
+            {% for geo in geo_map.keys() %}
+                <option value="{{ geo }}" {% if geo == selected_geo %}selected{% endif %}>{{ geo }}</option>
+            {% endfor %}
+        </select>
+        <label for="page_size" style="margin-bottom:0; font-weight:500;">Rows per page:</label>
+        <select name="page_size" id="page_size" onchange="changePageSize()"
+            style="padding: 0.4rem 0.7rem; font-size: 0.95rem; border-radius: 4px; border: 1px solid #bbb; min-width: 80px;">
+            {% for opt in pagination_options %}
+                <option value="{{ opt }}" {% if opt == page_size %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+        </select>
+        <input type="hidden" name="sort_by" id="sort_by" value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir" id="sort_dir" value="{{ sort_dir }}">
+        <input type="hidden" name="page" id="page" value="{{ page }}">
+        <button type="submit" style="padding: 0.4rem 1.2rem; background: #2980b9; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer;">Fetch VMs</button>
+    </form>
+    <div id="loading-msg" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(255,255,255,0.7); align-items:center; justify-content:center; z-index:2000;">
+        <div style="text-align:center; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);">
+            <svg width="48" height="48" viewBox="0 0 40 40" style="vertical-align:middle;">
+                <circle cx="20" cy="20" r="16" stroke="#2980b9" stroke-width="4" fill="none" stroke-dasharray="80" stroke-linecap="round">
+                    <animateTransform attributeName="transform" type="rotate" from="0 20 20" to="360 20 20" dur="1s" repeatCount="indefinite"/>
+                </circle>
+            </svg>
+            <div style="margin-top:1.2rem; color:#2980b9; font-weight:bold; font-size:1.2rem;">Loading VMs, please wait...</div>
+        </div>
+    </div>
+    {% if loading %}
+        <div class="loading">
+            <svg width="40" height="40" viewBox="0 0 40 40" style="vertical-align:middle;">
+                <circle cx="20" cy="20" r="16" stroke="#2980b9" stroke-width="4" fill="none" stroke-dasharray="80" stroke-linecap="round">
+                    <animateTransform attributeName="transform" type="rotate" from="0 20 20" to="360 20 20" dur="1s" repeatCount="indefinite"/>
+                </circle>
+            </svg>
+            Loading VMs, please wait...
+        </div>
+    {% endif %}
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+    {% if vms is not none %}
+        <div class="result">
+            {% if vms|length > 0 %}
+                <button type="button" onclick="downloadCSV()" style="margin-bottom: 1rem; padding: 0.4rem 1.2rem; background: #2980b9; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer;">Download CSV</button>
+            {% endif %}
+            <table class="modern-table">
+                <tr>
+                    <th class="sortable" onclick="setSort('name', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Name
+                        {% if sort_by == 'name' %}
+                            {% if sort_dir == 'asc' %}&#9650;{% else %}&#9660;{% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('status', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Status
+                        {% if sort_by == 'status' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('zone', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Zone
+                        {% if sort_by == 'zone' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('machineType', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Machine Type
+                        {% if sort_by == 'machineType' %}
+                            {% if sort_dir == 'asc' %}&#9650;{% else %}&#9660;{% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('cpu', '{{ sort_by }}', '{{ sort_dir }}')">
+                        CPU
+                        {% if sort_by == 'cpu' %}
+                            {% if sort_dir == 'asc' %}&#9650;{% else %}&#9660;{% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('memory', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Memory
+                        {% if sort_by == 'memory' %}
+                            {% if sort_dir == 'asc' %}&#9650;{% else %}&#9660;{% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('labels', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Labels
+                        {% if sort_by == 'labels' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('diskTypes', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Disk Type
+                        {% if sort_by == 'diskTypes' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('diskSizes', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Disk Size (GB)
+                        {% if sort_by == 'diskSizes' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('creationTime', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Creation Time
+                        {% if sort_by == 'creationTime' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('lastStartedTime', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Start Time
+                        {% if sort_by == 'lastStartedTime' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('lastStoppedTime', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Stop Time
+                        {% if sort_by == 'lastStoppedTime' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('daysStarted', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Days Started
+                        {% if sort_by == 'daysStarted' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('daysStopped', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Days Stopped
+                        {% if sort_by == 'daysStopped' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('internalIp', '{{ sort_by }}', '{{ sort_dir }}')">
+                        Internal IP
+                        {% if sort_by == 'internalIp' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('externalIp', '{{ sort_by }}', '{{ sort_dir }}')">
+                        External IP
+                        {% if sort_by == 'externalIp' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                    <th class="sortable" onclick="setSort('vpcName', '{{ sort_by }}', '{{ sort_dir }}')">
+                        VPC Name
+                        {% if sort_by == 'vpcName' %}
+                            {% if sort_dir == 'asc' %}
+                                &#9650;
+                            {% else %}
+                                &#9660;
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                </tr>
+                {% if vms|length == 0 %}
+                    <tr>
+                        <td colspan="15" style="text-align:center; color:#888;">No VMs found for the selected location.</td>
+                    </tr>
+                {% else %}
+                    {% for vm in vms %}
+                        <tr class="{% if vm.status != 'RUNNING' %}non-running{% endif %}">
+                            <td>{{ vm.name }}</td>
+                            <td>{{ vm.status }}</td>
+                            <td>{{ vm.zone }}</td>
+                            <td>{{ vm.machineType }}</td>
+                            <td>{{ vm.cpu }}</td>
+                            <td>{{ vm.memory }}</td>
+                            <td>{{ vm.labels }}</td>
+                            <td>{{ vm.diskTypes }}</td>
+                            <td>{{ vm.diskSizes }}</td>
+                            <td>{{ vm.creationTime }}</td>
+                            <td>{{ vm.lastStartedTime }}</td>
+                            <td>{{ vm.lastStoppedTime }}</td>
+                            <td>{{ vm.daysStarted }}</td>
+                            <td>{{ vm.daysStopped }}</td>
+                            <td>{{ vm.internalIp }}</td>
+                            <td>{{ vm.externalIp }}</td>
+                            <td>{{ vm.vpcName }}</td>
+                        </tr>
+                    {% endfor %}
+                {% endif %}
+            </table>
+        </div>
+        <div class="pagination-bar" style="display: flex; align-items: center; justify-content: space-between; margin-top: 1.5rem; background: #f4f6fa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 0.5rem 1rem;">
+            <div style="font-weight: bold; color: #2c3e50;">
+                Total VMs: {{ total_vms }}
+            </div>
+            <div class="pagination" style="display: flex; align-items: center; gap: 0.7rem;">
+                <button type="button" onclick="goToPage({{ page - 1 }})" {% if page <= 1 %}disabled{% endif %} style="padding: 0.25rem 0.7rem; font-size: 0.95rem; border-radius: 4px; border: 1px solid #bbb; background: #fff;">Prev</button>
+                <span style="font-size: 0.95rem;">Page {{ page }} of {{ total_pages }}</span>
+                <button type="button" onclick="goToPage({{ page + 1 }})" {% if page >= total_pages %}disabled{% endif %} style="padding: 0.25rem 0.7rem; font-size: 0.95rem; border-radius: 4px; border: 1px solid #bbb; background: #fff;">Next</button>
+            </div>
+        </div>
+    {% endif %}
+</body>
+</html>

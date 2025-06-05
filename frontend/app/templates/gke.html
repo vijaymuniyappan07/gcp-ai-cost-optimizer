@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GKE Clusters - GCP AI Cost Optimizer</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; }
+        h2 { color: #2c3e50; }
+        .loading { color: #2980b9; font-weight: bold; margin-top: 1rem; }
+        .error { color: #c0392b; margin-top: 1rem; }
+        .modern-table {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+            background: #fff;
+            box-shadow: 0 2px 8px #eee;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #bbb;
+        }
+        .modern-table th, .modern-table td {
+            padding: 0.7rem 1rem;
+            border-bottom: 1px solid #e0e0e0;
+            border-right: 1px solid #e0e0e0;
+            text-align: left;
+        }
+        .modern-table th:last-child, .modern-table td:last-child {
+            border-right: none;
+        }
+        .modern-table th {
+            background: #f4f6fa;
+            color: #2c3e50;
+            font-weight: 600;
+            border-top: 1px solid #bbb;
+        }
+        .modern-table tr:hover {
+            background: #f0f4f8;
+        }
+        .modern-table tr.non-running {
+            background: #23272f;
+            color: #fff;
+        }
+        .modern-table tr.non-running td, .modern-table tr.non-running th {
+            color: #fff;
+        }
+        .modern-table tr.non-running:hover {
+            background: #2d323c;
+        }
+        .nodepool-autoscale {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0; top: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.4);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: #fff;
+            border-radius: 8px;
+            padding: 2rem;
+            min-width: 350px;
+            max-width: 400px;
+            box-shadow: 0 4px 24px #2222;
+            position: relative;
+        }
+        .modal-content label { display: block; margin-top: 1rem; }
+        .modal-content input[type="number"] { width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #ccc; }
+        .modal-content select { width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #ccc; }
+        .modal-content button { margin-top: 1.2rem; width: 100%; padding: 0.7rem; background: #2980b9; color: #fff; border: none; border-radius: 4px; font-size: 1rem; }
+        .modal-content .close { position: absolute; top: 0.7rem; right: 1rem; font-size: 1.5rem; color: #888; cursor: pointer; }
+        .modal-content .confirm { background: #27ae60; }
+        .modal-content .cancel { background: #c0392b; margin-top: 0.5rem; }
+        .modal-content .input-row { display: flex; gap: 1rem; }
+        .modal-content .input-row > div { flex: 1; }
+    </style>
+    <script>
+        function downloadCSV() {
+            var clusters = window.gkeClusters || [];
+            var headers = [
+                "Name", "Location", "Status", "Cluster Type", "Node Pools", "Node Pools Machine Type",
+                "Is Public Cluster?", "Autoscaling Status", "Min Node Count", "Max Node Count",
+                "Endpoint", "Node Count", "Node Version", "Master Version", "Network", "Subnetwork", "Labels", "Creation Time"
+            ];
+            var csv = [headers.join(",")];
+            clusters.forEach(function(cluster) {
+                var nodePools = (cluster.nodePools || []).map(np => {
+                    var npText = np.name;
+                    if (np.autoscalingEnabled) npText += " (Autoscale)";
+                    return npText;
+                }).join(" | ");
+                var row = [
+                    cluster.name, cluster.location, cluster.status, cluster.clustertype,
+                    nodePools,
+                    cluster.nodePoolsMachineType,
+                    cluster.isPublicCluster,
+                    cluster.autoscalingStatus,
+                    cluster.minNodeCount,
+                    cluster.maxNodeCount,
+                    cluster.endpoint,
+                    cluster.nodeCount,
+                    cluster.nodeVersion,
+                    cluster.masterVersion,
+                    cluster.network,
+                    cluster.subnetwork,
+                    cluster.labels,
+                    cluster.createTime
+                ].map(val => '"' + (val || "") + '"');
+                csv.push(row.join(","));
+            });
+            var blob = new Blob([csv.join("\n")], { type: 'text/csv' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'gke_report.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        function showLoading() {
+            document.getElementById('loading-msg').style.display = 'block';
+        }
+        function openResizeModal(clusterIndex) {
+            var modal = document.getElementById('resize-modal');
+            var cluster = window.gkeClusters[clusterIndex];
+            var nodePools = cluster.nodePools;
+            var nodePoolSelect = document.getElementById('resize-nodepool');
+            nodePoolSelect.innerHTML = "";
+            nodePools.forEach(function(np, idx) {
+                var opt = document.createElement('option');
+                opt.value = np.name;
+                opt.text = np.name;
+                nodePoolSelect.appendChild(opt);
+            });
+            // Set select value to first node pool
+            if (nodePools.length > 0) {
+                nodePoolSelect.value = nodePools[0].name;
+                setResizeModalNodePoolFields(nodePools[0]);
+            }
+            nodePoolSelect.onchange = function() {
+                var selected = nodePools.find(np => np.name === nodePoolSelect.value);
+                setResizeModalNodePoolFields(selected);
+            };
+            document.getElementById('resize-modal-cluster').value = cluster.name;
+            document.getElementById('resize-modal-project').value = cluster.project_id || "";
+            document.getElementById('resize-modal-location').value = cluster.location || "";
+            document.getElementById('resize-modal-cluster-name').innerText = "Cluster: " + cluster.name;
+            document.getElementById('resize-modal').style.display = 'flex';
+        }
+        function setResizeModalNodePoolFields(nodePool) {
+            document.getElementById('resize-autoscaling').checked = !!nodePool.autoscalingEnabled;
+            document.getElementById('resize-min-node').value = nodePool.minNodeCount || 0;
+            document.getElementById('resize-max-node').value = nodePool.maxNodeCount || 0;
+            document.getElementById('resize-static-node').value = nodePool.nodeCount || 0;
+            document.getElementById('resize-modal-machine-type').innerText = "Machine Type: " + (nodePool.machineType || "N/A");
+            updateResizeModalFields();
+        }
+        function setResizeLoading(isLoading) {
+            var overlay = document.getElementById('resize-loading-overlay');
+            var resizeBtn = document.querySelector('#resize-form .confirm');
+            var cancelBtn = document.querySelector('#resize-form .cancel');
+            if (overlay) overlay.style.display = isLoading ? 'flex' : 'none';
+            if (resizeBtn) resizeBtn.disabled = isLoading;
+            if (cancelBtn) cancelBtn.disabled = isLoading;
+        }
+        function closeResizeModal() {
+            setResizeLoading(false);
+            document.getElementById('resize-modal').style.display = 'none';
+        }
+        function updateResizeModalFields() {
+            var autoscaling = document.getElementById('resize-autoscaling').checked;
+            document.getElementById('resize-min-node').parentElement.style.display = autoscaling ? 'block' : 'none';
+            document.getElementById('resize-max-node').parentElement.style.display = autoscaling ? 'block' : 'none';
+            document.getElementById('resize-static-node').parentElement.style.display = autoscaling ? 'none' : 'block';
+        }
+        function confirmResize() {
+            // Validation
+            setResizeLoading(true);
+            var autoscaling = document.getElementById('resize-autoscaling').checked;
+            var minNode = parseInt(document.getElementById('resize-min-node').value, 10);
+            var maxNode = parseInt(document.getElementById('resize-max-node').value, 10);
+            var staticNode = parseInt(document.getElementById('resize-static-node').value, 10);
+            if (autoscaling) {
+                if (isNaN(minNode) || isNaN(maxNode) || minNode < 0 || maxNode < 0 || minNode > 10 || maxNode > 10) {
+                    alert("Min and Max node count must be integers between 0 and 10.");
+                    return;
+                }
+                if (minNode >= maxNode) {
+                    alert("Min node count must be less than Max node count.");
+                    return;
+                }
+            } else {
+                if (isNaN(staticNode) || staticNode < 0 || staticNode > 10) {
+                    alert("Node count must be an integer between 0 and 10.");
+                    return;
+                }
+            }
+            if (!confirm("Are you sure you want to resize this node pool?")) return;
+
+            // Gather form data
+            var payload = {
+                project_id: document.getElementById('resize-modal-project').value,
+                cluster_name: document.getElementById('resize-modal-cluster').value,
+                location: document.getElementById('resize-modal-location').value,
+                nodepool: document.getElementById('resize-nodepool').value,
+                autoscaling: autoscaling,
+                min_node: minNode,
+                max_node: maxNode,
+                node_count: staticNode
+            };
+
+            console.log("Resize payload:", payload);
+            fetch("/gke/resize", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                setResizeLoading(false);
+                closeResizeModal();
+                if (data && data.success) {
+                    alert(data.message || "Resize request sent successfully.");
+                    // Optionally, refresh the page or cluster list here
+                    location.reload();
+                } else {
+                    let errorMsg = (data && (data.message || data.error)) || "Resize request failed.";
+                    alert(errorMsg);
+                }
+            })
+            .catch(err => {
+                setResizeLoading(false);
+                closeResizeModal();
+                alert("Error sending resize request: " + err);
+            });
+        }
+    </script>
+</head>
+<body>
+    <a href="{{ url_for('index') }}">&#8592; Back to Home</a>
+    <h2>GKE Clusters</h2>
+    <form method="post" action="{{ url_for('gke') }}" id="gke-form" style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; background: #f8fafd; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem 1.5rem; margin-bottom: 1.5rem; max-width: 600px;" onsubmit="showLoading()">
+        <label for="project_id" style="margin-bottom:0; font-weight:500;">Project ID:</label>
+        <select name="project_id" id="project_id" required style="padding: 0.4rem 0.7rem; border-radius: 4px; border: 1px solid #bbb; min-width: 160px;">
+            {% for pid in project_ids %}
+                <option value="{{ pid }}" {% if pid == selected_project_id %}selected{% endif %}>{{ pid }}</option>
+            {% endfor %}
+        </select>
+        <input type="hidden" name="sort_by" id="sort_by" value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir" id="sort_dir" value="{{ sort_dir }}">
+        <button type="submit" style="padding: 0.4rem 1.2rem; background: #2980b9; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer;">Fetch GKE Clusters</button>
+    </form>
+    <div id="loading-msg" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(255,255,255,0.7); align-items:center; justify-content:center; z-index:2000;">
+        <div style="text-align:center; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);">
+            <svg width="48" height="48" viewBox="0 0 40 40" style="vertical-align:middle;">
+                <circle cx="20" cy="20" r="16" stroke="#2980b9" stroke-width="4" fill="none" stroke-dasharray="80" stroke-linecap="round">
+                    <animateTransform attributeName="transform" type="rotate" from="0 20 20" to="360 20 20" dur="1s" repeatCount="indefinite"/>
+                </circle>
+            </svg>
+            <div style="margin-top:1.2rem; color:#2980b9; font-weight:bold; font-size:1.2rem;">Loading GKE clusters, please wait...</div>
+        </div>
+    </div>
+    {% if loading %}
+        <div class="loading">
+            <svg width="40" height="40" viewBox="0 0 40 40" style="vertical-align:middle;">
+                <circle cx="20" cy="20" r="16" stroke="#2980b9" stroke-width="4" fill="none" stroke-dasharray="80" stroke-linecap="round">
+                    <animateTransform attributeName="transform" type="rotate" from="0 20 20" to="360 20 20" dur="1s" repeatCount="indefinite"/>
+                </circle>
+            </svg>
+            Loading GKE clusters, please wait...
+        </div>
+    {% endif %}
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+    {% if clusters is not none %}
+        {% if clusters|length > 0 %}
+            <div style="margin-bottom: 1rem;">
+                <button type="button" onclick="downloadCSV()" style="padding: 0.4rem 1.2rem; background: #27ae60; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; box-shadow: 0 1px 4px #e0e0e0;">Download CSV</button>
+            </div>
+        {% endif %}
+        <table class="modern-table">
+            <tr>
+                {% set sort_icon = {"asc": "▲", "desc": "▼"} %}
+                {% macro sort_th(label, field) -%}
+                    <th>
+                        <a href="#" onclick="
+                            document.getElementById('sort_by').value = '{{ field }}';
+                            document.getElementById('sort_dir').value = (
+                                document.getElementById('sort_by').value === '{{ field }}' && document.getElementById('sort_dir').value === 'asc'
+                            ) ? 'desc' : 'asc';
+                            document.getElementById('gke-form').submit();
+                            return false;
+                        " style='color:inherit; text-decoration:none;'>
+                            {{ label }}
+                            {% if sort_by == field %}
+                                <span style="font-size:0.9em;">{{ sort_icon[sort_dir] }}</span>
+                            {% endif %}
+                        </a>
+                    </th>
+                {%- endmacro %}
+                {{ sort_th("Name", "name") }}
+                {{ sort_th("Location", "location") }}
+                {{ sort_th("Status", "status") }}
+                {{ sort_th("Cluster Type", "clustertype") }}
+                {{ sort_th("Node Pools", "nodePools") }}
+                {{ sort_th("Node Pools Machine Type", "nodePoolsMachineType") }}
+                {{ sort_th("Is Public Cluster?", "isPublicCluster") }}
+                {{ sort_th("Autoscaling Status", "autoscalingStatus") }}
+                {{ sort_th("Min Node Count", "minNodeCount") }}
+                {{ sort_th("Max Node Count", "maxNodeCount") }}
+                {{ sort_th("Endpoint", "endpoint") }}
+                {{ sort_th("Node Count", "nodeCount") }}
+                {{ sort_th("Node Version", "nodeVersion") }}
+                {{ sort_th("Master Version", "masterVersion") }}
+                {{ sort_th("Network", "network") }}
+                {{ sort_th("Subnetwork", "subnetwork") }}
+                {{ sort_th("Labels", "labels") }}
+                {{ sort_th("Creation Time", "createTime") }}
+                <th></th>
+            </tr>
+            {% if clusters|length == 0 %}
+                <tr>
+                    <td colspan="19" style="text-align:center; color:#888;">No GKE clusters found.</td>
+                </tr>
+            {% else %}
+                <script>
+                    window.gkeClusters = {{ clusters|tojson }};
+                </script>
+                {% for cluster in clusters %}
+                    <tr class="{% if (cluster.status and (cluster.status|lower == 'stopped' or cluster.status|lower == 'suspended')) or (cluster.nodeCount|string == '0') %}non-running{% endif %}">
+                        <td>{{ cluster.name }}</td>
+                        <td>{{ cluster.location }}</td>
+                        <td>{{ cluster.status }}</td>
+                        <td>{{ cluster.clustertype }}</td>
+                        <td>
+                            {% for np in cluster.nodePools %}
+                                <span{% if np.autoscalingEnabled %} class="nodepool-autoscale"{% endif %}>
+                                    {{ np.name }}
+                                    {% if np.autoscalingEnabled %}(Autoscale){% endif %}
+                                </span>{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        </td>
+                        <td>{{ cluster.nodePoolsMachineType }}</td>
+                        <td>{{ cluster.isPublicCluster }}</td>
+                        <td>{{ cluster.autoscalingStatus }}</td>
+                        <td>{{ cluster.minNodeCount or '0' }}</td>
+                        <td>{{ cluster.maxNodeCount or '0' }}</td>
+                        <td>{{ cluster.endpoint }}</td>
+                        <td>{{ cluster.nodeCount }}</td>
+                        <td>{{ cluster.nodeVersion }}</td>
+                        <td>{{ cluster.masterVersion }}</td>
+                        <td>{{ cluster.network }}</td>
+                        <td>{{ cluster.subnetwork }}</td>
+                        <td>{{ cluster.labels }}</td>
+                        <td>{{ cluster.createTime }}</td>
+                        <td>
+                            {% if cluster.clustertype == "Standard" %}
+                                <button type="button" onclick="openResizeModal({{ loop.index0 }})" style="padding: 0.3rem 0.9rem; background: #34495e; color: #fff; border: none; border-radius: 4px; font-size: 0.95rem; cursor: pointer;">Resize</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% endif %}
+        </table>
+        <!-- Resize Modal (structure only, JS logic to be implemented) -->
+        <div id="resize-modal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <span class="close" onclick="closeResizeModal()">&times;</span>
+                <h3>Resize Node Pool</h3>
+                <div id="resize-modal-cluster-name" style="font-weight: bold; color: #2c3e50; margin-bottom: 0.7rem;"></div>
+                <form id="resize-form">
+                    <input type="hidden" id="resize-modal-cluster" name="cluster_name">
+                    <input type="hidden" id="resize-modal-project" name="project_id">
+                    <input type="hidden" id="resize-modal-location" name="location">
+                    <label for="resize-nodepool">Node Pool:</label>
+                    <select id="resize-nodepool" name="nodepool"></select>
+                    <div id="resize-modal-machine-type" style="margin-top: 0.7rem; font-size: 1rem; color: #34495e;"></div>
+                    <label><input type="checkbox" id="resize-autoscaling" name="autoscaling" onchange="updateResizeModalFields()"> Autoscaling enabled?</label>
+                    <div id="resize-min-node-div">
+                        <label for="resize-min-node">Min Node:</label>
+                        <input type="number" id="resize-min-node" name="min_node" min="0" max="10" required>
+                    </div>
+                    <div id="resize-max-node-div">
+                        <label for="resize-max-node">Max Node:</label>
+                        <input type="number" id="resize-max-node" name="max_node" min="0" max="10" required>
+                    </div>
+                    <div id="resize-static-node-div">
+                        <label for="resize-static-node">Node Count:</label>
+                        <input type="number" id="resize-static-node" name="node_count" min="0" max="10" required>
+                    </div>
+                    <button type="button" class="confirm" onclick="confirmResize()">Resize</button>
+                    <button type="button" class="cancel" onclick="closeResizeModal()">Cancel</button>
+                </form>
+                <div id="resize-loading-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); align-items:center; justify-content:center; z-index:10;">
+                    <div style="text-align:center;">
+                        <svg width="40" height="40" viewBox="0 0 40 40" style="vertical-align:middle;">
+                            <circle cx="20" cy="20" r="16" stroke="#2980b9" stroke-width="4" fill="none" stroke-dasharray="80" stroke-linecap="round">
+                                <animateTransform attributeName="transform" type="rotate" from="0 20 20" to="360 20 20" dur="1s" repeatCount="indefinite"/>
+                            </circle>
+                        </svg>
+                        <div style="margin-top:1rem; color:#2980b9; font-weight:bold;">Resizing node pool, please wait...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</body>
+</html>
