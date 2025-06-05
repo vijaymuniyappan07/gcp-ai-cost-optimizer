@@ -80,6 +80,47 @@
         .modal-content .input-row > div { flex: 1; }
     </style>
     <script>
+        function downloadCSV() {
+            var clusters = window.gkeClusters || [];
+            var headers = [
+                "Name", "Location", "Status", "Cluster Type", "Node Pools", "Node Pools Machine Type",
+                "Is Public Cluster?", "Autoscaling Status", "Min Node Count", "Max Node Count",
+                "Endpoint", "Node Count", "Node Version", "Master Version", "Network", "Subnetwork", "Labels", "Creation Time"
+            ];
+            var csv = [headers.join(",")];
+            clusters.forEach(function(cluster) {
+                var nodePools = (cluster.nodePools || []).map(np => {
+                    var npText = np.name;
+                    if (np.autoscalingEnabled) npText += " (Autoscale)";
+                    return npText;
+                }).join(" | ");
+                var row = [
+                    cluster.name, cluster.location, cluster.status, cluster.clustertype,
+                    nodePools,
+                    cluster.nodePoolsMachineType,
+                    cluster.isPublicCluster,
+                    cluster.autoscalingStatus,
+                    cluster.minNodeCount,
+                    cluster.maxNodeCount,
+                    cluster.endpoint,
+                    cluster.nodeCount,
+                    cluster.nodeVersion,
+                    cluster.masterVersion,
+                    cluster.network,
+                    cluster.subnetwork,
+                    cluster.labels,
+                    cluster.createTime
+                ].map(val => '"' + (val || "") + '"');
+                csv.push(row.join(","));
+            });
+            var blob = new Blob([csv.join("\n")], { type: 'text/csv' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'gke_report.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
         function showLoading() {
             document.getElementById('loading-msg').style.display = 'block';
         }
