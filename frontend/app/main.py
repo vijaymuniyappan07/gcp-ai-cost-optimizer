@@ -275,33 +275,6 @@ def vms():
     loading = False
     selected_project_id = project_ids[0] if project_ids else ""
     selected_geo = list(geo_map.keys())[0] if geo_map else ""
-    sort_by = request.form.get("sort_by") or request.args.get("sort_by") or "name"
-    sort_dir = request.form.get("sort_dir") or request.args.get("sort_dir") or "asc"
-    if request.method == "POST":
-        try:
-            page = int(request.form.get("page", 1))
-        except Exception:
-            page = 1
-        try:
-            page_size = int(request.form.get("page_size", 10))
-            if page_size not in PAGINATION_OPTIONS:
-                page_size = 10
-        except Exception:
-            page_size = 10
-    else:
-        try:
-            page = int(request.args.get("page", 1))
-        except Exception:
-            page = 1
-        try:
-            page_size = int(request.args.get("page_size", 10))
-            if page_size not in PAGINATION_OPTIONS:
-                page_size = 10
-        except Exception:
-            page_size = 10
-    total_pages = 1
-    total_vms = 0
-
     if request.method == "POST":
         selected_project_id = request.form.get("project_id", "")
         selected_geo = request.form.get("geo", "")
@@ -317,47 +290,10 @@ def vms():
                 resp.raise_for_status()
                 data = resp.json()
                 vms = data.get("vms", [])
-                reverse = sort_dir == "desc"
-                numeric_fields = {"daysStarted", "daysStopped"}
-                def sort_key(vm):
-                    val = vm.get(sort_by, "")
-                    if sort_by == "diskSizes":
-                        try:
-                            first_size = int(str(val).split(",")[0].strip())
-                            return first_size
-                        except Exception:
-                            return float('inf') if reverse else float('-inf')
-                    if sort_by == "memory":
-                        # Parse "12 GB" as 12.0
-                        try:
-                            num = float(str(val).split()[0])
-                            return num
-                        except Exception:
-                            return float('inf') if reverse else float('-inf')
-                    if sort_by in numeric_fields:
-                        try:
-                            return int(val)
-                        except Exception:
-                            return float('inf') if reverse else float('-inf')
-                    return str(val)
-                vms = sorted(vms, key=sort_key, reverse=reverse)
-                total_vms = len(vms)
-                total_pages = max(1, (total_vms + page_size - 1) // page_size)
-                start = (page - 1) * page_size
-                end = start + page_size
-                vms = vms[start:end]
                 loading = False
             except Exception as e:
                 error = f"Error fetching VMs: {e}"
                 loading = False
-    else:
-        total_pages = 1
-        page = 1
-        page_size = 10
-        total_vms = 0
-
-    page_numbers = list(range(1, total_pages + 1))
-
     return render_template(
         "vms.html",
         project_ids=project_ids,
@@ -366,15 +302,7 @@ def vms():
         error=error,
         selected_project_id=selected_project_id,
         selected_geo=selected_geo,
-        loading=loading,
-        sort_by=sort_by,
-        sort_dir=sort_dir,
-        page=page,
-        page_size=page_size,
-        total_pages=total_pages,
-        page_numbers=page_numbers,
-        total_vms=total_vms,
-        pagination_options=PAGINATION_OPTIONS
+        loading=loading
     )
 
 if __name__ == "__main__":
