@@ -15,3 +15,4 @@ isort==5.13.2
 python-dotenv==1.0.1
 requests==2.32.2
 uvicorn==0.29.0
+google-cloud-filestore==1.13.0

@@ -163,12 +163,30 @@ class VMService:
             disk_types.append(disk_type.split("/")[-1] if "/" in disk_type else disk_type)
             disk_sizes.append(str(disk_size))
 
+        # Fetch CPU and memory from machine type
+        cpu = "N/A"
+        memory = "N/A"
+        try:
+            zone = getattr(instance, "zone", "").split("/")[-1] if getattr(instance, "zone", "") else ""
+            machine_type = getattr(instance, "machine_type", "").split("/")[-1] if getattr(instance, "machine_type", "") else ""
+            if zone and machine_type:
+                mt_client = compute_v1.MachineTypesClient()
+                mt = mt_client.get(project=self.project_id, zone=zone, machine_type=machine_type)
+                cpu = getattr(mt, "guest_cpus", "N/A")
+                memory_mb = getattr(mt, "memory_mb", None)
+                if memory_mb is not None:
+                    memory = f"{round(memory_mb/1024, 2)} GB"
+        except Exception as e:
+            print(f"[WARN] Could not fetch CPU/memory for {machine_type} in {zone}: {e}")
+
         return {
             "id": getattr(instance, "id", ""),
             "name": getattr(instance, "name", ""),
             "status": status,
             "zone": getattr(instance, "zone", "").split("/")[-1] if getattr(instance, "zone", "") else "",
             "machineType": getattr(instance, "machine_type", "").split("/")[-1] if getattr(instance, "machine_type", "") else "",
+            "cpu": cpu,
+            "memory": memory,
             "creationTime": creation_time,
             "lastStoppedTime": stopped_time,
             "lastStartedTime": last_started,

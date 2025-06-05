@@ -94,29 +94,33 @@ def get_gke(project_id: str = Query(None, description="GCP project id")):
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
+from app.services.filestore_service import FilestoreService
+
 @router.get("/resources/filestore")
-def get_filestore():
+def get_filestore(project_id: str = Query(None, description="GCP project id")):
     """
-    Returns mock Filestore data for testing.
+    Returns real Filestore data for the given project.
     """
-    return {
-        "filestore": [
-            {"id": "fs-1", "name": "test-fs-1", "status": "READY"},
-            {"id": "fs-2", "name": "test-fs-2", "status": "CREATING"}
-        ]
-    }
+    try:
+        filestore_service = FilestoreService(project_id=project_id)
+        instances = filestore_service.list_filestore_instances(project_id=project_id)
+        return {"filestore": instances}
+    except Exception as e:
+        return {"error": str(e)}
+
+from app.services.storage_service import StorageService
 
 @router.get("/resources/storage")
-def get_storage():
+def get_storage(project_id: str = Query(None, description="GCP project id")):
     """
-    Returns mock Cloud Storage bucket data for testing.
+    Returns real Cloud Storage bucket data for the given project.
     """
-    return {
-        "storage": [
-            {"id": "bucket-1", "name": "test-bucket-1", "location": "US"},
-            {"id": "bucket-2", "name": "test-bucket-2", "location": "EU"}
-        ]
-    }
+    try:
+        storage_service = StorageService(project_id=project_id)
+        buckets = storage_service.list_buckets(project_id=project_id)
+        return {"storage": buckets}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @router.post("/resources/gke/resize")

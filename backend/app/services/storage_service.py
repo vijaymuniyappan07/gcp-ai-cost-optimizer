@@ -1,0 +1,79 @@
+import os
+from google.cloud import storage
+from dotenv import load_dotenv
+from datetime import datetime
+
+load_dotenv()
+
+class StorageService:
+    def __init__(self, project_id=None):
+        env_projects = os.getenv("GCP_PROJECT_ID", "")
+        self.project_ids = [p.strip() for p in env_projects.split(",") if p.strip()]
+        if not self.project_ids:
+            raise ValueError("GCP_PROJECT_ID environment variable is not set. Please add it to your .env file.")
+        self.project_id = project_id or self.project_ids[0]
+
+    def list_buckets(self, project_id=None):
+        project_id = project_id or self.project_id
+        client = storage.Client(project=project_id)
+        buckets = []
+        try:
+            for bucket in client.list_buckets(project=project_id):
+                # Location type (region, dual-region, multi-region)
+                location_type = getattr(bucket, "location_type", "region")
+                # Public access: check IAM policy for allUsers/allAuthenticatedUsers
+                public_access = "No"
+                try:
+                    policy = bucket.get_iam_policy(requested_policy_version=3)
+                    for binding in policy.bindings:
+                        if "allUsers" in binding["members"] or "allAuthenticatedUsers" in binding["members"]:
+                            public_access = "Yes"
+                            break
+                except Exception:
+                    public_access = "Unknown"
+                # Last modified: use bucket.updated or latest object
+                last_modified = ""
+                try:
+                    if hasattr(bucket, "updated") and bucket.updated:
+                        last_modified = bucket.updated.strftime("%Y-%m-%d %H:%M:%S")
+                    else:
+                        # Fallback: get latest object's updated time
+                        blobs = list(client.list_blobs(bucket.name, max_results=1, order_by=["-updated"]))
+                        if blobs:
+                            last_modified = blobs[0].updated.strftime("%Y-%m-%d %H:%M:%S")
+                except Exception:
+                    last_modified = ""
+                # Size: sum of all object sizes (expensive for large buckets)
+                size = ""
+                try:
+                    total_size = 0
+                    for blob in client.list_blobs(bucket.name):
+                        total_size += blob.size or 0
+                    if total_size > 0:
+                        # Show in GB if large, else MB or bytes
+                        if total_size >= 1024**3:
+                            size = f"{round(total_size / (1024**3), 2)} GB"
+                        elif total_size >= 1024**2:
+                            size = f"{round(total_size / (1024**2), 2)} MB"
+                        elif total_size >= 1024:
+                            size = f"{round(total_size / 1024, 2)} KB"
+                        else:
+                            size = f"{total_size} B"
+                except Exception as e:
+                    print(f"[WARN] Could not fetch size for bucket {bucket.name}: {e}")
+                # Labels
+                labels = ", ".join(f"{k}:{v}" for k, v in (bucket.labels or {}).items()) if hasattr(bucket, "labels") else ""
+                buckets.append({
+                    "name": bucket.name,
+                    "location": bucket.location,
+                    "location_type": location_type,
+                    "storage_class": bucket.storage_class,
+                    "size": size,
+                    "created": bucket.time_created.strftime("%Y-%m-%d %H:%M:%S") if bucket.time_created else "",
+                    "last_modified": last_modified,
+                    "public_access": public_access,
+                    "labels": labels,
+                })
+        except Exception as e:
+            print(f"[ERROR] StorageService.list_buckets: {e}")
+        return buckets

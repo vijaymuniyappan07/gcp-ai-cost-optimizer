@@ -57,11 +57,11 @@ This list prioritizes visual feedback and parallel backend/frontend progress.
 
 ## 5. GKE: Backend + Frontend
 
-- **Backend:**
+- **[COMPLETED] Backend:**
   - Implement GKE cluster data fetching in a dedicated service file and wire to `/resources/gke`.
   - Test: Endpoint returns real (or mocked) GKE data.
 
-- **Frontend:**
+- **[COMPLETED] Frontend:**
   - Update `ResourceSummary` to display GKE data.
   - Add loading/error states for GKE.
   - Test: UI shows live GKE data.
@@ -70,13 +70,15 @@ This list prioritizes visual feedback and parallel backend/frontend progress.
 
 ## 6. Filestore: Backend + Frontend
 
-- **Backend:**
+- **[COMPLETED] Backend:**
   - Implement Filestore data fetching in a dedicated service file and wire to `/resources/filestore`.
   - Test: Endpoint returns real (or mocked) Filestore data.
 
-- **Frontend:**
-  - Update `ResourceSummary` to display Filestore data.
+- **[COMPLETED] Frontend:**
+  - Add a new route and template to display Filestore data.
   - Add loading/error states for Filestore.
+  - Add a "Filestore" link to the home page.
+  - Add sorting and CSV download for all columns.
   - Test: UI shows live Filestore data.
 
 ---
