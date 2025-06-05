@@ -29,11 +29,33 @@
     <div class="role">Logged in as: <b>{{ role }}</b></div>
     <p>Welcome! Select a resource to view cost and optimization insights:</p>
     <div class="resources">
-        <div class="card"><a href="{{ url_for('vms') }}">VMs (Compute Engine)</a></div>
-        <div class="card"><a href="{{ url_for('cloudsql') }}">Cloud SQL</a></div>
-        <div class="card"><a href="{{ url_for('gke') }}">GKE (Kubernetes)</a></div>
-        <div class="card"><a href="#">Filestore</a></div>
-        <div class="card"><a href="#">Cloud Storage</a></div>
+        <div class="card"><a href="{{ url_for('vms') }}" onclick="showHomeLoading(event)">VMs (Compute Engine)</a></div>
+        <div class="card"><a href="{{ url_for('cloudsql') }}" onclick="showHomeLoading(event)">Cloud SQL</a></div>
+        <div class="card"><a href="{{ url_for('gke') }}" onclick="showHomeLoading(event)">GKE (Kubernetes)</a></div>
+        <div class="card"><a href="#" onclick="showHomeLoading(event)">Filestore</a></div>
+        <div class="card"><a href="#" onclick="showHomeLoading(event)">Cloud Storage</a></div>
     </div>
+    <div id="home-loading-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(255,255,255,0.7); align-items:center; justify-content:center; z-index:2000;">
+        <div style="text-align:center;">
+            <svg width="48" height="48" viewBox="0 0 40 40" style="vertical-align:middle;">
+                <circle cx="20" cy="20" r="16" stroke="#2980b9" stroke-width="4" fill="none" stroke-dasharray="80" stroke-linecap="round">
+                    <animateTransform attributeName="transform" type="rotate" from="0 20 20" to="360 20 20" dur="1s" repeatCount="indefinite"/>
+                </circle>
+            </svg>
+            <div style="margin-top:1.2rem; color:#2980b9; font-weight:bold; font-size:1.2rem;">Loading, please wait...</div>
+        </div>
+    </div>
+    <script>
+        function showHomeLoading(event) {
+            document.getElementById('home-loading-overlay').style.display = 'flex';
+            // For real navigation, let the link proceed. For "#" links, prevent default.
+            if (event.target.getAttribute('href') === "#") {
+                event.preventDefault();
+                setTimeout(function() {
+                    document.getElementById('home-loading-overlay').style.display = 'none';
+                }, 1200);
+            }
+        }
+    </script>
 </body>
 </html>

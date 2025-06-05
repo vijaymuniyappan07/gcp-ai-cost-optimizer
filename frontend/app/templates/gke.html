@@ -243,16 +243,16 @@
 <body>
     <a href="{{ url_for('index') }}">&#8592; Back to Home</a>
     <h2>GKE Clusters</h2>
-    <form method="post" action="{{ url_for('gke') }}" id="gke-form" style="max-width: 350px; margin-bottom: 2rem;" onsubmit="showLoading()">
-        <label for="project_id">Project ID:</label>
-        <select name="project_id" id="project_id" required>
+    <form method="post" action="{{ url_for('gke') }}" id="gke-form" style="display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; background: #f8fafd; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem 1.5rem; margin-bottom: 1.5rem; max-width: 600px;" onsubmit="showLoading()">
+        <label for="project_id" style="margin-bottom:0; font-weight:500;">Project ID:</label>
+        <select name="project_id" id="project_id" required style="padding: 0.4rem 0.7rem; border-radius: 4px; border: 1px solid #bbb; min-width: 160px;">
             {% for pid in project_ids %}
                 <option value="{{ pid }}" {% if pid == selected_project_id %}selected{% endif %}>{{ pid }}</option>
             {% endfor %}
         </select>
         <input type="hidden" name="sort_by" id="sort_by" value="{{ sort_by }}">
         <input type="hidden" name="sort_dir" id="sort_dir" value="{{ sort_dir }}">
-        <button type="submit">Fetch GKE Clusters</button>
+        <button type="submit" style="padding: 0.4rem 1.2rem; background: #2980b9; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer;">Fetch GKE Clusters</button>
     </form>
     <div id="loading-msg" class="loading" style="display:none;">
         <svg width="40" height="40" viewBox="0 0 40 40" style="vertical-align:middle;">
@@ -277,28 +277,48 @@
     {% endif %}
     {% if clusters is not none %}
         {% if clusters|length > 0 %}
-            <button type="button" onclick="downloadCSV()" style="margin-bottom: 1rem; padding: 0.4rem 1.2rem; background: #2980b9; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer;">Download CSV</button>
+            <div style="margin-bottom: 1rem;">
+                <button type="button" onclick="downloadCSV()" style="padding: 0.4rem 1.2rem; background: #27ae60; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; box-shadow: 0 1px 4px #e0e0e0;">Download CSV</button>
+            </div>
         {% endif %}
         <table class="modern-table">
             <tr>
-                <th>Name</th>
-                <th>Location</th>
-                <th>Status</th>
-                <th>Cluster Type</th>
-                <th>Node Pools</th>
-                <th>Node Pools Machine Type</th>
-                <th>Is Public Cluster?</th>
-                <th>Autoscaling Status</th>
-                <th>Min Node Count</th>
-                <th>Max Node Count</th>
-                <th>Endpoint</th>
-                <th>Node Count</th>
-                <th>Node Version</th>
-                <th>Master Version</th>
-                <th>Network</th>
-                <th>Subnetwork</th>
-                <th>Labels</th>
-                <th>Creation Time</th>
+                {% set sort_icon = {"asc": "▲", "desc": "▼"} %}
+                {% macro sort_th(label, field) -%}
+                    <th>
+                        <a href="#" onclick="
+                            document.getElementById('sort_by').value = '{{ field }}';
+                            document.getElementById('sort_dir').value = (
+                                document.getElementById('sort_by').value === '{{ field }}' && document.getElementById('sort_dir').value === 'asc'
+                            ) ? 'desc' : 'asc';
+                            document.getElementById('gke-form').submit();
+                            return false;
+                        " style='color:inherit; text-decoration:none;'>
+                            {{ label }}
+                            {% if sort_by == field %}
+                                <span style="font-size:0.9em;">{{ sort_icon[sort_dir] }}</span>
+                            {% endif %}
+                        </a>
+                    </th>
+                {%- endmacro %}
+                {{ sort_th("Name", "name") }}
+                {{ sort_th("Location", "location") }}
+                {{ sort_th("Status", "status") }}
+                {{ sort_th("Cluster Type", "clustertype") }}
+                {{ sort_th("Node Pools", "nodePools") }}
+                {{ sort_th("Node Pools Machine Type", "nodePoolsMachineType") }}
+                {{ sort_th("Is Public Cluster?", "isPublicCluster") }}
+                {{ sort_th("Autoscaling Status", "autoscalingStatus") }}
+                {{ sort_th("Min Node Count", "minNodeCount") }}
+                {{ sort_th("Max Node Count", "maxNodeCount") }}
+                {{ sort_th("Endpoint", "endpoint") }}
+                {{ sort_th("Node Count", "nodeCount") }}
+                {{ sort_th("Node Version", "nodeVersion") }}
+                {{ sort_th("Master Version", "masterVersion") }}
+                {{ sort_th("Network", "network") }}
+                {{ sort_th("Subnetwork", "subnetwork") }}
+                {{ sort_th("Labels", "labels") }}
+                {{ sort_th("Creation Time", "createTime") }}
                 <th></th>
             </tr>
             {% if clusters|length == 0 %}
