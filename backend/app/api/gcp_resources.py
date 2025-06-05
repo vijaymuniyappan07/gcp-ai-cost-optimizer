@@ -128,7 +128,7 @@ async def resize_gke_nodepool(request: Request):
         data = await request.json()
         project_id = data.get("project_id")
         cluster_name = data.get("cluster_name")
-        nodepool_name = data.get("nodepool_name")
+        nodepool_name = data.get("nodepool")  # FIX: match frontend key
         autoscaling = data.get("autoscaling")
         min_node = data.get("min_node")
         max_node = data.get("max_node")

@@ -98,13 +98,16 @@ class GKEService:
         Resize a GKE node pool (autoscaling or static) for a given cluster.
         """
         try:
+            print(f"[DEBUG] Starting resize_nodepool: project_id={project_id}, location={location}, cluster_name={cluster_name}, nodepool_name={nodepool_name}, autoscaling={autoscaling}, min_node={min_node}, max_node={max_node}, node_count={node_count}", flush=True)
             service = build("container", "v1")
             parent = f"projects/{project_id}/locations/{location}/clusters/{cluster_name}/nodePools/{nodepool_name}"
             # Fetch current node pool config
             nodepool = service.projects().locations().clusters().nodePools().get(name=parent).execute()
+            print(f"[DEBUG] Current nodepool config: {nodepool}", flush=True)
             current_autoscaling = nodepool.get("autoscaling", {}).get("enabled", False)
             result = {}
             if autoscaling:
+                print("[DEBUG] Enabling autoscaling...", flush=True)
                 # Enable autoscaling and set min/max node count
                 body = {
                     "autoscaling": {
@@ -116,10 +119,12 @@ class GKEService:
                 op = service.projects().locations().clusters().nodePools().setAutoscaling(
                     name=parent, body=body
                 ).execute()
+                print(f"[DEBUG] setAutoscaling response: {op}", flush=True)
                 result["autoscaling"] = op
             else:
                 # If currently autoscaling, disable it first
                 if current_autoscaling:
+                    print("[DEBUG] Disabling autoscaling before setting static node count...", flush=True)
                     body = {
                         "autoscaling": {
                             "enabled": False
@@ -128,16 +133,33 @@ class GKEService:
                     op = service.projects().locations().clusters().nodePools().setAutoscaling(
                         name=parent, body=body
                     ).execute()
+                    print(f"[DEBUG] disable_autoscaling response: {op}", flush=True)
                     result["disable_autoscaling"] = op
+                    # Wait for the disable autoscaling operation to complete
+                    op_name = op.get("name")
+                    if op_name:
+                        from time import sleep
+                        for i in range(60):  # Wait up to 60 seconds
+                            op_status = service.projects().locations().operations().get(
+                                name=f"projects/{project_id}/locations/{location}/operations/{op_name}"
+                            ).execute()
+                            print(f"[DEBUG] Polling operation {op_name}: status={op_status.get('status')}", flush=True)
+                            if op_status.get("status") == "DONE":
+                                print(f"[DEBUG] Operation {op_name} completed.", flush=True)
+                                break
+                            sleep(2)
                 # Set static node count
+                print("[DEBUG] Setting static node count...", flush=True)
                 body = {
                     "nodeCount": int(node_count)
                 }
                 op = service.projects().locations().clusters().nodePools().setSize(
                     name=parent, body=body
                 ).execute()
+                print(f"[DEBUG] setSize response: {op}", flush=True)
                 result["set_size"] = op
+            print(f"[DEBUG] resize_nodepool result: {result}", flush=True)
             return {"success": True, "result": result}
         except Exception as e:
-            print(f"Error resizing GKE node pool: {e}")
+            print(f"[ERROR] Error resizing GKE node pool: {e}", flush=True)
             return {"success": False, "error": str(e)}

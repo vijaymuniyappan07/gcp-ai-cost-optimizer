@@ -136,14 +136,18 @@
                 opt.text = np.name;
                 nodePoolSelect.appendChild(opt);
             });
-            // Set initial values for the first node pool
-            setResizeModalNodePoolFields(nodePools[0]);
+            // Set select value to first node pool
+            if (nodePools.length > 0) {
+                nodePoolSelect.value = nodePools[0].name;
+                setResizeModalNodePoolFields(nodePools[0]);
+            }
             nodePoolSelect.onchange = function() {
                 var selected = nodePools.find(np => np.name === nodePoolSelect.value);
                 setResizeModalNodePoolFields(selected);
             };
             document.getElementById('resize-modal-cluster').value = cluster.name;
             document.getElementById('resize-modal-project').value = cluster.project_id || "";
+            document.getElementById('resize-modal-location').value = cluster.location || "";
             document.getElementById('resize-modal-cluster-name').innerText = "Cluster: " + cluster.name;
             document.getElementById('resize-modal').style.display = 'flex';
         }
@@ -155,7 +159,16 @@
             document.getElementById('resize-modal-machine-type').innerText = "Machine Type: " + (nodePool.machineType || "N/A");
             updateResizeModalFields();
         }
+        function setResizeLoading(isLoading) {
+            var overlay = document.getElementById('resize-loading-overlay');
+            var resizeBtn = document.querySelector('#resize-form .confirm');
+            var cancelBtn = document.querySelector('#resize-form .cancel');
+            if (overlay) overlay.style.display = isLoading ? 'flex' : 'none';
+            if (resizeBtn) resizeBtn.disabled = isLoading;
+            if (cancelBtn) cancelBtn.disabled = isLoading;
+        }
         function closeResizeModal() {
+            setResizeLoading(false);
             document.getElementById('resize-modal').style.display = 'none';
         }
         function updateResizeModalFields() {
@@ -166,6 +179,7 @@
         }
         function confirmResize() {
             // Validation
+            setResizeLoading(true);
             var autoscaling = document.getElementById('resize-autoscaling').checked;
             var minNode = parseInt(document.getElementById('resize-min-node').value, 10);
             var maxNode = parseInt(document.getElementById('resize-max-node').value, 10);
@@ -186,9 +200,43 @@
                 }
             }
             if (!confirm("Are you sure you want to resize this node pool?")) return;
-            // TODO: Make API call to backend to resize node pool
-            closeResizeModal();
-            alert("Resize request sent (not yet implemented).");
+
+            // Gather form data
+            var payload = {
+                project_id: document.getElementById('resize-modal-project').value,
+                cluster_name: document.getElementById('resize-modal-cluster').value,
+                location: document.getElementById('resize-modal-location').value,
+                nodepool: document.getElementById('resize-nodepool').value,
+                autoscaling: autoscaling,
+                min_node: minNode,
+                max_node: maxNode,
+                node_count: staticNode
+            };
+
+            console.log("Resize payload:", payload);
+            fetch("/gke/resize", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                setResizeLoading(false);
+                closeResizeModal();
+                if (data && data.success) {
+                    alert(data.message || "Resize request sent successfully.");
+                    // Optionally, refresh the page or cluster list here
+                    location.reload();
+                } else {
+                    let errorMsg = (data && (data.message || data.error)) || "Resize request failed.";
+                    alert(errorMsg);
+                }
+            })
+            .catch(err => {
+                setResizeLoading(false);
+                closeResizeModal();
+                alert("Error sending resize request: " + err);
+            });
         }
     </script>
 </head>
@@ -306,6 +354,7 @@
                 <form id="resize-form">
                     <input type="hidden" id="resize-modal-cluster" name="cluster_name">
                     <input type="hidden" id="resize-modal-project" name="project_id">
+                    <input type="hidden" id="resize-modal-location" name="location">
                     <label for="resize-nodepool">Node Pool:</label>
                     <select id="resize-nodepool" name="nodepool"></select>
                     <div id="resize-modal-machine-type" style="margin-top: 0.7rem; font-size: 1rem; color: #34495e;"></div>
@@ -325,6 +374,16 @@
                     <button type="button" class="confirm" onclick="confirmResize()">Resize</button>
                     <button type="button" class="cancel" onclick="closeResizeModal()">Cancel</button>
                 </form>
+                <div id="resize-loading-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); align-items:center; justify-content:center; z-index:10;">
+                    <div style="text-align:center;">
+                        <svg width="40" height="40" viewBox="0 0 40 40" style="vertical-align:middle;">
+                            <circle cx="20" cy="20" r="16" stroke="#2980b9" stroke-width="4" fill="none" stroke-dasharray="80" stroke-linecap="round">
+                                <animateTransform attributeName="transform" type="rotate" from="0 20 20" to="360 20 20" dur="1s" repeatCount="indefinite"/>
+                            </circle>
+                        </svg>
+                        <div style="margin-top:1rem; color:#2980b9; font-weight:bold;">Resizing node pool, please wait...</div>
+                    </div>
+                </div>
             </div>
         </div>
     {% endif %}

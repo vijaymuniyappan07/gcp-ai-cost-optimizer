@@ -91,6 +91,9 @@ def gke():
                     return float('inf') if reverse else float('-inf')
             return str(val)
         clusters = sorted(clusters, key=sort_key, reverse=reverse)
+        # Ensure each cluster has project_id for modal use
+        for cluster in clusters:
+            cluster["project_id"] = selected_project_id
         loading = False
     except Exception as e:
         error = f"Error fetching GKE clusters: {e}"
@@ -144,6 +147,27 @@ def cloudsql():
         error = f"Error fetching Cloud SQL instances: {e}"
         loading = False
     return render_template("cloudsql.html", instances=instances, error=error, loading=loading, project_ids=project_ids, selected_project_id=selected_project_id, sort_by=sort_by, sort_dir=sort_dir)
+
+@app.route("/gke/resize", methods=["POST"])
+def gke_resize():
+    if "user" not in session or "role" not in session:
+        return {"success": False, "message": "Unauthorized"}, 401
+    try:
+        data = request.get_json()
+        print("Received resize payload in Flask:", data, flush=True)
+        if not data:
+            return {"success": False, "message": "No data provided"}, 400
+        # Forward the request to the backend API
+        resp = requests.post(
+            f"{BACKEND_API_URL}/resources/gke/resize",
+            json=data,
+            timeout=60
+        )
+        resp.raise_for_status()
+        backend_response = resp.json()
+        return backend_response, resp.status_code
+    except Exception as e:
+        return {"success": False, "message": f"Error forwarding resize request: {e}"}, 500
 
 @app.route("/vms", methods=["GET", "POST"])
 def vms():
