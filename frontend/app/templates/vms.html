@@ -269,8 +269,8 @@
                                     .replace(rec.proposed_type, `<b>${rec.proposed_type}</b>`)
                             }</span>
                             ${rec.current_type ? `<div style="color:#888; margin-top:0.3em;">Current: <b>${rec.current_type}</b>${rec.proposed_type ? ` &rarr; Proposed: <b>${rec.proposed_type}</b>` : ""}</div>` : ""}
-                            ${rec.cost_saving ? `<div style="color:#27ae60; margin-top:0.3em;"><b>Potential Cost Saving:</b> ${rec.cost_saving}</div>` : ""}
-                            ${rec.rationale ? `<div style="color:#888; margin-top:0.3em;">Reason: ${rec.rationale}</div>` : ""}
+                            ${rec.cost_saving ? `<div style="color:#f4d03f; margin-top:0.3em;"><b>Potential Cost Saving:</b> ${rec.cost_saving}</div>` : ""}
+                            ${rec.rationale ? `<div style="color:#e67e22; font-weight:bold; margin-top:0.3em;">Reason: ${rec.rationale.replace("Please see insight's content for more information.", "").trim()}</div>` : ""}
                         </div>
                     `).join("");
                 } else {

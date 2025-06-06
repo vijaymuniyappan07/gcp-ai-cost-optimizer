@@ -157,6 +157,7 @@ def get_vm_recommendations_recommender(project_id, zone):
         response = service.projects().locations().recommenders().recommendations().list(parent=parent).execute()
         recs = []
         for rec in response.get("recommendations", []):
+            print(f"[RECOMMENDER DEBUG] Full recommendation object:\n{rec}\n")
             content = rec.get("content", {})
             op_groups = content.get("operationGroups", [])
             current_type = ""
@@ -188,13 +189,47 @@ def get_vm_recommendations_recommender(project_id, zone):
                         cost_saving = f"${cost_saving} (monthly)"
                 except Exception:
                     cost_saving = ""
+            # Extract detailed rationale from insights if available
+            rationale = rec.get("description", "")
+            insights = rec.get("associatedInsights", [])
+            print(f"[RECOMMENDER DEBUG] associatedInsights for {instance_name}: {insights}")
+            # Try to fetch insight details for a better rationale
+            from googleapiclient.discovery import build as build_insight
+            try:
+                credentials, _ = default()
+                insight_service = build_insight("recommender", "v1", credentials=credentials)
+                for insight_ref in insights:
+                    insight_id = insight_ref.get("insight")
+                    if insight_id:
+                        print(f"[RECOMMENDER DEBUG] Fetching insight: {insight_id}")
+                        try:
+                            insight_obj = insight_service.projects().locations().insightTypes().insights().get(name=insight_id).execute()
+                            # Try to use description or content
+                            if "description" in insight_obj and insight_obj["description"]:
+                                rationale = insight_obj["description"]
+                            elif "content" in insight_obj and isinstance(insight_obj["content"], dict):
+                                for k, v in insight_obj["content"].items():
+                                    if isinstance(v, str) and "utilization" in v:
+                                        rationale = v
+                                    if isinstance(v, dict):
+                                        for subk, subv in v.items():
+                                            if isinstance(subv, str) and "utilization" in subv:
+                                                rationale = subv
+                                    if isinstance(v, list):
+                                        for subv in v:
+                                            if isinstance(subv, str) and "utilization" in subv:
+                                                rationale = subv
+                        except Exception as e:
+                            print(f"[RECOMMENDER DEBUG] Could not fetch insight {insight_id}: {e}")
+            except Exception as e:
+                print(f"[RECOMMENDER DEBUG] Could not build insight service: {e}")
             recs.append({
                 "text": rec.get("description", ""),
                 "type": "cost",
                 "severity": rec.get("priority", "medium"),
                 "resource": rec.get("name", ""),
                 "instance_name": instance_name,
-                "rationale": rec.get("description", ""),
+                "rationale": rationale,
                 "current_type": current_type.split("/machineTypes/")[-1] if "/machineTypes/" in current_type else current_type,
                 "proposed_type": proposed_type.split("/machineTypes/")[-1] if "/machineTypes/" in proposed_type else proposed_type,
                 "cost_saving": cost_saving
