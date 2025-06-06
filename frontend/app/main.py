@@ -305,5 +305,14 @@ def vms():
         loading=loading
     )
 
+@app.route("/recommendations", methods=["POST"])
+def recommendations_proxy():
+    try:
+        data = request.get_json()
+        resp = requests.post(f"{BACKEND_API_URL}/recommendations", json=data, timeout=60)
+        return (resp.text, resp.status_code, resp.headers.items())
+    except Exception as e:
+        return {"error": str(e)}, 500
+
 if __name__ == "__main__":
     app.run(debug=True)

@@ -17,3 +17,4 @@ requests==2.32.2
 uvicorn==0.29.0
 google-cloud-filestore==1.13.0
 pebble==5.0.3
+google-cloud-aiplatform==1.44.0

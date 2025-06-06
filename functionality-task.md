@@ -112,14 +112,78 @@ This list prioritizes visual feedback and parallel backend/frontend progress.
 
 ## 9. AI/ML Recommendations: Backend + Frontend
 
+### VMs
+
 - **Backend:**
-  - Integrate with AI/ML service in `ai_service.py` and wire to `/recommendations`.
-  - Test: Endpoint returns actionable recommendations.
+  - [ ] Implement `/recommendations` endpoint for VMs in `backend/app/api/recommendations.py`.
+  - [ ] In `ai_service.py`, add logic to analyze VM data and return recommendations.
+  - [ ] Test: Endpoint returns actionable recommendations for VMs.
 
 - **Frontend:**
-  - Update `RecommendationList` to fetch and display recommendations.
-  - Add loading/error states for recommendations.
-  - Test: UI shows live recommendations.
+  - [ ] Add "Get AI Recommendation" button to the VMs page.
+  - [ ] On click, send VM data to backend and display recommendations inline.
+  - [ ] Add loading/error states for recommendations.
+  - [ ] Test: UI shows live recommendations for VMs.
+
+---
+
+### Cloud SQL
+
+- **Backend:**
+  - [ ] Implement `/recommendations` endpoint for Cloud SQL.
+  - [ ] In `ai_service.py`, add logic to analyze Cloud SQL data and return recommendations.
+  - [ ] Test: Endpoint returns actionable recommendations for Cloud SQL.
+
+- **Frontend:**
+  - [ ] Add "Get AI Recommendation" button to the Cloud SQL page.
+  - [ ] On click, send Cloud SQL data to backend and display recommendations inline.
+  - [ ] Add loading/error states for recommendations.
+  - [ ] Test: UI shows live recommendations for Cloud SQL.
+
+---
+
+### GKE
+
+- **Backend:**
+  - [ ] Implement `/recommendations` endpoint for GKE.
+  - [ ] In `ai_service.py`, add logic to analyze GKE data and return recommendations.
+  - [ ] Test: Endpoint returns actionable recommendations for GKE.
+
+- **Frontend:**
+  - [ ] Add "Get AI Recommendation" button to the GKE page.
+  - [ ] On click, send GKE data to backend and display recommendations inline.
+  - [ ] Add loading/error states for recommendations.
+  - [ ] Test: UI shows live recommendations for GKE.
+
+---
+
+### Filestore
+
+- **Backend:**
+  - [ ] Implement `/recommendations` endpoint for Filestore.
+  - [ ] In `ai_service.py`, add logic to analyze Filestore data and return recommendations.
+  - [ ] Test: Endpoint returns actionable recommendations for Filestore.
+
+- **Frontend:**
+  - [ ] Add "Get AI Recommendation" button to the Filestore page.
+  - [ ] On click, send Filestore data to backend and display recommendations inline.
+  - [ ] Add loading/error states for recommendations.
+  - [ ] Test: UI shows live recommendations for Filestore.
+
+---
+
+### Cloud Storage
+
+- **Backend:**
+  - [ ] Implement `/recommendations` endpoint for Cloud Storage.
+  - [ ] In `ai_service.py`, add logic to analyze Storage data and return recommendations.
+  - [ ] Test: Endpoint returns actionable recommendations for Storage.
+
+- **Frontend:**
+  - [ ] Add "Get AI Recommendation" button to the Storage page.
+  - [ ] On click, send Storage data to backend and display recommendations inline.
+  - [ ] Add loading/error states for recommendations.
+  - [ ] Test: UI shows live recommendations for Storage.
 
 ---
 

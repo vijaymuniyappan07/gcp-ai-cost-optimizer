@@ -1,16 +1,35 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
 @router.post("/recommendations")
-def get_recommendations():
+async def get_recommendations(request: Request):
     """
-    Returns mock AI-generated recommendations.
+    Return AI/ML recommendations for a given resource type and project.
     """
-    return {
-        "recommendations": [
-            "Consider shutting down unused VMs.",
-            "Resize Cloud SQL instances for cost savings.",
-            "Delete unused storage buckets."
+    import time
+    from app.services.vm_service import VMService
+    from app.services.ai_service import get_vm_recommendations
+    data = await request.json()
+    project_id = data.get("project_id")
+    resource_type = data.get("resource_type")
+    print(f"[DEBUG] /recommendations called for project_id={project_id}, resource_type={resource_type}")
+    if resource_type == "vms":
+        # Fetch real VM data
+        vm_service = VMService(project_id=project_id)
+        vms = vm_service.list_vms(project_id=project_id)
+        # Call AI/ML service (placeholder)
+        recommendations = get_vm_recommendations(vms, project_id=project_id)
+    else:
+        recommendations = [
+            {
+                "text": f"No AI recommendations available for resource type: {resource_type}",
+                "type": "info",
+                "severity": "info",
+                "resource": "",
+                "rationale": ""
+            }
         ]
-    }
+    time.sleep(1)  # Simulate processing delay
+    return JSONResponse(content={"recommendations": recommendations})
