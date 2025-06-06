@@ -95,35 +95,28 @@ This list prioritizes visual feedback and parallel backend/frontend progress.
   - Add sorting, pagination, and CSV download for all columns.
   - Test: UI shows live Storage data.
 
----
-
-## 8. Cost Analysis: Backend + Frontend
-
-- **Backend:**
-  - Implement real cost analysis logic in `cost_analysis.py` and expose via `/cost-analysis`.
-  - Test: Endpoint returns analysis for test data.
-
-- **Frontend:**
-  - Update dashboard to fetch and display cost analysis results.
-  - Add loading/error states for cost analysis.
-  - Test: UI shows live cost analysis.
 
 ---
 
-## 9. AI/ML Recommendations: Backend + Frontend
+## 8. AI/ML Recommendations: Backend + Frontend
 
 ### VMs
 
-- **Backend:**
-  - [ ] Implement `/recommendations` endpoint for VMs in `backend/app/api/recommendations.py`.
-  - [ ] In `ai_service.py`, add logic to analyze VM data and return recommendations.
-  - [ ] Test: Endpoint returns actionable recommendations for VMs.
+- **[COMPLETED] Backend:**
+  - Integrated `/recommendations` endpoint for VMs in `backend/app/api/recommendations.py`.
+  - Uses GCP Recommender API for real-time, project/zone-aware recommendations.
+  - Aggregates recommendations from all zones, parses machine type, cost saving, and detailed rationale from insights.
+  - Test: Endpoint returns actionable, real GCP recommendations for VMs.
 
-- **Frontend:**
-  - [ ] Add "Get AI Recommendation" button to the VMs page.
-  - [ ] On click, send VM data to backend and display recommendations inline.
-  - [ ] Add loading/error states for recommendations.
-  - [ ] Test: UI shows live recommendations for VMs.
+- **[COMPLETED] Frontend:**
+  - Added "Get AI Recommendation" button to the VMs page.
+  - On click, fetches recommendations from backend and displays them inline.
+  - Shows loading spinner, error states, and context-aware action buttons (Resize, Stop, Delete).
+  - Supports PDF/CSV export with project ID in filename.
+  - Test: UI shows live, actionable recommendations for VMs.
+
+**Note:**  
+The app now uses the GCP Recommender API for VM recommendations, with full support for project/zone selection, real-time data, and a modern, interactive UI.
 
 ---
 
@@ -186,6 +179,16 @@ This list prioritizes visual feedback and parallel backend/frontend progress.
   - [ ] Test: UI shows live recommendations for Storage.
 
 ---
+## 9. Cost Analysis: Backend + Frontend
+
+- **Backend:**
+  - Implement real cost analysis logic in `cost_analysis.py` and expose via `/cost-analysis`.
+  - Test: Endpoint returns analysis for test data.
+
+- **Frontend:**
+  - Update dashboard to fetch and display cost analysis results.
+  - Add loading/error states for cost analysis.
+  - Test: UI shows live cost analysis.
 
 ## 10. User Actions & Polish
 
