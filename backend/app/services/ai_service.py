@@ -140,12 +140,93 @@ def analyze_vms(project_id, vms, days=7):
             })
     return suggestions
 
+def get_vm_recommendations_recommender(project_id, zone):
+    """
+    Fetch VM recommendations from GCP Recommender API for a given project and zone.
+    The project_id is passed from the UI and used in the API call, not from default credentials.
+    """
+    from googleapiclient.discovery import build
+    from google.auth import default
+    try:
+        credentials, _ = default()
+        service = build("recommender", "v1", credentials=credentials)
+        recommender_id = "google.compute.instance.MachineTypeRecommender"
+        parent = f"projects/{project_id}/locations/{zone}/recommenders/{recommender_id}"
+        print(f"[RECOMMENDER DEBUG] (UI project_id) Fetching recommendations for project: {project_id}, zone: {zone}")
+        print(f"[RECOMMENDER DEBUG] Parent path: {parent}")
+        response = service.projects().locations().recommenders().recommendations().list(parent=parent).execute()
+        recs = []
+        for rec in response.get("recommendations", []):
+            content = rec.get("content", {})
+            op_groups = content.get("operationGroups", [])
+            current_type = ""
+            proposed_type = ""
+            instance_name = ""
+            for group in op_groups:
+                for op in group.get("operations", []):
+                    if op.get("path") == "/machineType":
+                        current_type = op.get("resource", "")
+                        proposed_type = op.get("value", "")
+                    if op.get("path") == "/":
+                        # Try to extract instance name from resource path
+                        resource_path = op.get("resource", "")
+                        if "/instances/" in resource_path:
+                            instance_name = resource_path.split("/instances/")[-1]
+            # Fallback: try to extract instance name from current_type
+            if not instance_name and "/instances/" in current_type:
+                instance_name = current_type.split("/instances/")[-1]
+            # Cost savings
+            cost_saving = ""
+            impact = rec.get("primaryImpact", {})
+            if impact.get("category") == "COST":
+                try:
+                    cost_saving = impact["costProjection"]["cost"]["units"]
+                    if "nanos" in impact["costProjection"]["cost"]:
+                        nanos = impact["costProjection"]["cost"]["nanos"]
+                        cost_saving = f"${float(cost_saving) + nanos / 1e9:.2f} (monthly)"
+                    else:
+                        cost_saving = f"${cost_saving} (monthly)"
+                except Exception:
+                    cost_saving = ""
+            recs.append({
+                "text": rec.get("description", ""),
+                "type": "cost",
+                "severity": rec.get("priority", "medium"),
+                "resource": rec.get("name", ""),
+                "instance_name": instance_name,
+                "rationale": rec.get("description", ""),
+                "current_type": current_type.split("/machineTypes/")[-1] if "/machineTypes/" in current_type else current_type,
+                "proposed_type": proposed_type.split("/machineTypes/")[-1] if "/machineTypes/" in proposed_type else proposed_type,
+                "cost_saving": cost_saving
+            })
+        print(f"[RECOMMENDER DEBUG] Got {len(recs)} recommendations from Recommender API for project: {project_id}")
+        return recs
+    except Exception as e:
+        import traceback
+        print(f"[Recommender API] Exception for project {project_id}: {e}\n{traceback.format_exc()}")
+        return [{
+            "text": f"Recommender API error: {e}",
+            "type": "error",
+            "severity": "high",
+            "resource": "",
+            "rationale": ""
+        }]
+
 def get_vm_recommendations(vms, project_id=None):
     """
-    Analyze VM data and return actionable recommendations using real utilization.
+    Analyze VM data and return actionable recommendations using real utilization or GCP Recommender API.
     """
+    import os
+    use_recommender = os.getenv("USE_GCP_RECOMMENDER", "false").lower() == "true"
+    if use_recommender:
+        # Fetch recommendations from all unique zones in the VM list
+        zones = sorted(set(vm["zone"] for vm in vms if vm.get("zone")))
+        all_recs = []
+        for zone in zones:
+            recs = get_vm_recommendations_recommender(project_id, zone)
+            all_recs.extend(recs)
+        return all_recs
     if not project_id:
-        import os
         project_id = os.getenv("GCP_PROJECT_ID")
     suggestions = analyze_vms(project_id, vms, days=7)
     recommendations = []
