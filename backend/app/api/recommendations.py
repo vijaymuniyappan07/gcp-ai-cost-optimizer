@@ -21,6 +21,12 @@ async def get_recommendations(request: Request):
         vms = vm_service.list_vms(project_id=project_id)
         # Call AI/ML service (placeholder)
         recommendations = get_vm_recommendations(vms, project_id=project_id)
+    elif resource_type == "cloudsql":
+        from app.services.cloudsql_service import CloudSQLService
+        from app.services.ai_service import get_cloudsql_recommendations
+        sql_service = CloudSQLService(project_id=project_id)
+        instances = sql_service.list_cloudsql_instances(project_id=project_id)
+        recommendations = get_cloudsql_recommendations(instances, project_id=project_id)
     else:
         recommendations = [
             {

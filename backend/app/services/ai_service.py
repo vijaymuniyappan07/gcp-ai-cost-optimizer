@@ -246,6 +246,88 @@ def get_vm_recommendations_recommender(project_id, zone):
             "resource": "",
             "rationale": ""
         }]
+# --- Cloud SQL Recommendations ---
+
+def analyze_cloudsql_instances(instances):
+    """
+    Analyze Cloud SQL instances and return actionable recommendations.
+    """
+    recommendations = []
+    for inst in instances:
+        name = inst.get("name", "")
+        region = inst.get("region", "")
+        tier = inst.get("tier", "")
+        state = inst.get("state", "")
+        data_disk_size = inst.get("dataDiskSizeGb", 0)
+        storage_auto_resize = inst.get("storageAutoResize", False)
+        pricing_plan = inst.get("pricingPlan", "")
+        db_version = inst.get("databaseVersion", "")
+        creation_time = inst.get("creationTime", "")
+        rationale = []
+        # Recommend enabling storage auto-resize if not enabled
+        if not storage_auto_resize:
+            recommendations.append({
+                "text": f"Cloud SQL instance '{name}' in {region} does not have storage auto-resize enabled. Enable it to avoid outages.",
+                "type": "reliability",
+                "severity": "medium",
+                "resource": name,
+                "rationale": "Storage auto-resize is recommended to prevent downtime when disk is full."
+            })
+        # Recommend upgrading old database versions
+        if db_version and ("MYSQL_5_6" in db_version or "POSTGRES_9" in db_version):
+            recommendations.append({
+                "text": f"Cloud SQL instance '{name}' in {region} is running an old database version ({db_version}). Upgrade to a supported version.",
+                "type": "security",
+                "severity": "high",
+                "resource": name,
+                "rationale": f"Database version {db_version} is deprecated or soon to be unsupported."
+            })
+        # Recommend resizing if disk is very large and instance is small
+        try:
+            disk_gb = float(data_disk_size)
+        except Exception:
+            disk_gb = 0
+        if disk_gb > 500 and "db-f1-micro" in tier:
+            recommendations.append({
+                "text": f"Cloud SQL instance '{name}' in {region} has a large disk ({disk_gb}GB) but is using a micro tier ({tier}). Consider resizing for better performance.",
+                "type": "performance",
+                "severity": "medium",
+                "resource": name,
+                "rationale": f"Large disk on a micro instance may cause performance issues."
+            })
+        # Recommend stopping or deleting stopped/terminated instances
+        if state in ("STOPPED", "TERMINATED"):
+            recommendations.append({
+                "text": f"Cloud SQL instance '{name}' in {region} is {state.lower()}. Consider deleting if not needed.",
+                "type": "cost",
+                "severity": "low",
+                "resource": name,
+                "rationale": f"Stopped/terminated instances may still incur storage costs."
+            })
+        # Recommend reviewing pricing plan
+        if pricing_plan and pricing_plan.lower() == "per_use":
+            recommendations.append({
+                "text": f"Cloud SQL instance '{name}' in {region} is on a per-use pricing plan. Review if this is optimal for your workload.",
+                "type": "cost",
+                "severity": "medium",
+                "resource": name,
+                "rationale": "Per-use pricing may be more expensive for always-on workloads."
+            })
+    if not recommendations:
+        recommendations.append({
+            "text": "No optimization recommendations found for current Cloud SQL instances.",
+            "type": "info",
+            "severity": "info",
+            "resource": "",
+            "rationale": ""
+        })
+    return recommendations
+
+def get_cloudsql_recommendations(instances, project_id=None):
+    """
+    Analyze Cloud SQL data and return actionable recommendations.
+    """
+    return analyze_cloudsql_instances(instances)
 
 def get_vm_recommendations(vms, project_id=None):
     """
