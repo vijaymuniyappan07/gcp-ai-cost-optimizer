@@ -122,16 +122,16 @@ The app now uses the GCP Recommender API for VM recommendations, with full suppo
 
 ### Cloud SQL
 
-- **Backend:**
-  - [ ] Implement `/recommendations` endpoint for Cloud SQL.
-  - [ ] In `ai_service.py`, add logic to analyze Cloud SQL data and return recommendations.
-  - [ ] Test: Endpoint returns actionable recommendations for Cloud SQL.
+- **[COMPLETED] Backend:**
+  - Implement `/recommendations` endpoint for Cloud SQL.
+  - In `ai_service.py`, add logic to analyze Cloud SQL data and return recommendations.
+  - Test: Endpoint returns actionable recommendations for Cloud SQL.
 
-- **Frontend:**
-  - [ ] Add "Get AI Recommendation" button to the Cloud SQL page.
-  - [ ] On click, send Cloud SQL data to backend and display recommendations inline.
-  - [ ] Add loading/error states for recommendations.
-  - [ ] Test: UI shows live recommendations for Cloud SQL.
+- **[COMPLETED] Frontend:**
+  - Add "Get AI Recommendation" button to the Cloud SQL page.
+  - On click, send Cloud SQL data to backend and display recommendations inline.
+  - Add loading/error states for recommendations.
+  - Test: UI shows live recommendations for Cloud SQL.
 
 ---
 

@@ -68,6 +68,17 @@ class CloudSQLService:
                     vpc_network = vpc_url.split("/")[-1] if vpc_url else ""
                 elif "authorizedNetworks" in ip_config and ip_config["authorizedNetworks"]:
                     vpc_network = ip_config["authorizedNetworks"][0].get("value", "")
+                # Compute daysStopped if lastStoppedTime is available
+                last_stopped_time = instance.get("lastStoppedTime")
+                days_stopped = None
+                if last_stopped_time:
+                    from datetime import datetime, timezone as dt_timezone
+                    try:
+                        dt = datetime.fromisoformat(last_stopped_time.replace("Z", "+00:00"))
+                        now = datetime.now(dt_timezone.utc)
+                        days_stopped = (now - dt).days
+                    except Exception:
+                        days_stopped = None
                 instances.append({
                     "name": instance_name,
                     "region": instance.get("region", ""),
@@ -84,6 +95,8 @@ class CloudSQLService:
                     "pricingPlan": settings.get("pricingPlan", ""),
                     "labels": labels_str,
                     "vpcNetwork": vpc_network,
+                    "lastStoppedTime": last_stopped_time,
+                    "daysStopped": days_stopped,
                 })
             print(f"[DEBUG] gcloud: fetched {len(instances)} Cloud SQL instances")
             return instances

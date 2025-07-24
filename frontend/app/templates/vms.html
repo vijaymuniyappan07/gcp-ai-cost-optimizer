@@ -85,11 +85,21 @@
     <script>
         
         function getRecommendationActionButton(rec) {
-            if (rec.text && /resize|change machine type/i.test(rec.text)) {
+            // Show Resize for type or text indicating machine type change
+            if (
+                (rec.type && /(change[_\s]?machine[_\s]?type|resize)/i.test(rec.type)) ||
+                (rec.text && /(resize|change machine type)/i.test(rec.text))
+            ) {
                 return `<button style="margin-top:0.7em; padding:0.4rem 1.2rem; background:#2980b9; color:#fff; border:none; border-radius:4px; font-size:1em; cursor:pointer;">Resize</button>`;
-            } else if (rec.text && /stop|shutdown/i.test(rec.text)) {
+            } else if (
+                (rec.type && /stop/i.test(rec.type)) ||
+                (rec.text && /(stop|shutdown)/i.test(rec.text))
+            ) {
                 return `<button style="margin-top:0.7em; padding:0.4rem 1.2rem; background:#f39c12; color:#fff; border:none; border-radius:4px; font-size:1em; cursor:pointer;">Stop</button>`;
-            } else if (rec.text && /delete/i.test(rec.text)) {
+            } else if (
+                (rec.type && /delete/i.test(rec.type)) ||
+                (rec.text && /delete/i.test(rec.text))
+            ) {
                 return `<button style="margin-top:0.7em; padding:0.4rem 1.2rem; background:#e74c3c; color:#fff; border:none; border-radius:4px; font-size:1em; cursor:pointer;">Delete</button>`;
             }
             return "";
@@ -285,9 +295,15 @@ function renderTable() {
                     `;
                     for (let i = 0; i < lastRecommendations.length; i++) {
                         const rec = lastRecommendations[i];
+                        let category = "UNKNOWN";
+                        if (rec.type) category = rec.type.toUpperCase();
+                        else if (rec.category) category = rec.category.toUpperCase();
+                        else if (rec.recommenderSubtype) category = rec.recommenderSubtype.toUpperCase();
                         html += '<div style="margin-bottom:1rem; padding:1rem; border-radius:6px; background:#f8f6ff; border-left:5px solid ' +
                             (rec.severity === 'high' ? '#e74c3c' : rec.severity === 'medium' ? '#f39c12' : '#2980b9') + ';">' +
-                            '<b>' + (rec.type ? rec.type.toUpperCase() : '') + '</b> <span style="color:#888;">(' + rec.severity + ')</span><br>' +
+                            '<div style="margin-bottom:0.2em;"><span style="color:#555;font-weight:bold;">Category:</span> <b>' +
+                            category +
+                            '</b> <span style="color:#888;">(' + rec.severity + ')</span></div>' +
                             (rec.instance_name ? '<div style="margin-top:0.3em;"><b>Instance Name:</b> <b>' + rec.instance_name + '</b></div>' : '') +
                             '<span style="font-size:1.1em;">' +
                                 (rec.text

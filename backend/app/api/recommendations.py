@@ -27,6 +27,12 @@ async def get_recommendations(request: Request):
         sql_service = CloudSQLService(project_id=project_id)
         instances = sql_service.list_cloudsql_instances(project_id=project_id)
         recommendations = get_cloudsql_recommendations(instances, project_id=project_id)
+    elif resource_type == "gke":
+        from app.services.gke_service import GKEService
+        from app.services.ai_service import get_gke_recommendations
+        gke_service = GKEService(project_id=project_id)
+        clusters = gke_service.list_gke_clusters(project_id=project_id)
+        recommendations = get_gke_recommendations(clusters, project_id=project_id)
     else:
         recommendations = [
             {
